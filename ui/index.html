@@ -363,7 +363,7 @@ function renderOwners(card) {
 }
 
 function statusOf(s) {
-  if (s.still_active && !s.configured) return 'not declared';
+  if ((s.still_active || s.silent_since_last) && !s.configured) return 'not declared';
   if (s.still_active) return 'active';
   return s.configured ? 'quiet' : 'stopped';
 }

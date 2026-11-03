@@ -7,6 +7,9 @@ Class BlastRadius.Gate.Floor Extends %RegisteredObject
 /// Mildest first.
 Parameter ORDER = "APPLY,APPLY-AFTER-DRAIN,CANARY-FIRST,HOLD";
 
+/// The traffic window the rules are written for. A shorter look cannot clear anything.
+Parameter WINDOWDAYS = 30;
+
 ClassMethod Rank(pVerdict As %String) As %Integer
 {
 	set order=..#ORDER
@@ -46,18 +49,25 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 	if '$isobject(pEvidence.traffic) { do pEvidence.%Set("traffic",[]) }
 	if '$isobject(pEvidence.queue) { do pEvidence.%Set("queue",[]) }
 	set it=pEvidence.traffic.%GetIterator()
-	while it.%GetNext(.k,.t) { set checked(t.item)="" }
+	while it.%GetNext(.k,.t) { if +t."window_days">=..#WINDOWDAYS { set checked(t.item)="" } }
 	set it=pEvidence.queue.%GetIterator()
 	while it.%GetNext(.k,.q) { set queued(q.item)="" }
 	if $isobject(items) {
+		set hosts=0
 		set it=items.%GetIterator()
 		while it.%GetNext(.k,.name) {
 			continue:'..IsHost(name)
+			set hosts=hosts+1
 			if '$data(checked(name)) {
-				try { set t=##class(BlastRadius.Evidence.Traffic).Links(name) } catch ex { set t={"item":(name),"window_days":30,"error":(ex.DisplayString())} }
+				try { set t=##class(BlastRadius.Evidence.Traffic).Links(name,..#WINDOWDAYS) } catch ex { set t={"item":(name),"window_days":(..#WINDOWDAYS),"error":(ex.DisplayString())} }
 				do pEvidence.traffic.%Push(t)
 			}
 			if '$data(queued(name)) { do pEvidence.queue.%Push(##class(BlastRadius.Evidence.Traffic).QueueDepth(name)) }
+		}
+		// Names the production does not have leave the gate nothing to check, and nothing checked must not read as safe.
+		if (items.%Size()>0),(hosts=0) {
+			do reasons.%Push("None of the items the agent named is in this production: "_items.%ToJSON())
+			set floor="HOLD"
 		}
 	}
 	// A traffic check that failed is not a check. Nothing found and nothing looked at must not read the same.
@@ -85,7 +95,7 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 					continue
 				}
 				continue:$get(answers(key))="Confirm"
-				continue:pRequestText[sender
+				continue:..Names(pRequestText,sender)
 				do reasons.%Push(sender_" sends to "_t.item_" ("_detail_"), and nothing declares that link.")
 				do tasks.%Push({"key":(key),"item":(sender),"reason":("Your feed "_sender_" still sends to "_t.item_" ("_detail_"). This change would retire that route. Can it move?")})
 				set floor="HOLD"
@@ -103,13 +113,11 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 				set floor="HOLD"
 				continue
 			}
-			set lastRun(run.item)=run
-		}
-		set item=""
-		for {
-			set item=$order(lastRun(item),1,run) quit:item=""
+			// The same transform on both sides tests nothing.
+			continue:(run.current'="")&&(run.current=run.candidate)
+			set ran(run.item)=""
 			if +run."messages_failed">0 {
-				do reasons.%Push(run."messages_failed"_" stored messages failed in the shadow-run for "_item_".")
+				do reasons.%Push(run."messages_failed"_" stored messages failed in the shadow-run for "_run.item_".")
 				set floor="HOLD"
 			}
 			set di=run."field_differences"
@@ -120,6 +128,9 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 				set label=$select($isobject(class):class.%Get(field),1:"")
 				continue:$zconvert(label,"L")="intended"
 				set key="diff:"_field
+				// Every run counts, so a later run cannot hide what an earlier one found. Each field is one question.
+				continue:$data(asked(key))
+				set asked(key)=""
 				if $get(answers(key))="Reject" {
 					do reasons.%Push("An owner rejected the change to "_field_".")
 					set floor="HOLD"
@@ -127,22 +138,27 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 				}
 				continue:$get(answers(key))="Confirm"
 				do reasons.%Push("Shadow-run: "_d.messages_" of "_run."messages_processed"_" stored messages "_$select(d.kind="lost":"lose",d.kind="added":"gain",1:"change")_" field "_field_", and nothing says that is intended.")
-				do tasks.%Push({"key":(key),"item":(item),"reason":("Shadow-run with "_run.candidate_": "_d.messages_" of "_run."messages_processed"_" stored messages "_$select(d.kind="lost":"lose",d.kind="added":"gain",1:"change")_" field "_field_". Is that acceptable?")})
+				do tasks.%Push({"key":(key),"item":(run.item),"reason":("Shadow-run with "_run.candidate_": "_d.messages_" of "_run."messages_processed"_" stored messages "_$select(d.kind="lost":"lose",d.kind="added":"gain",1:"change")_" field "_field_". Is that acceptable?")})
 				set floor="HOLD"
 			}
 		}
 	}
 
 	// Rule 4: a router that transforms live traffic cannot be changed without testing that on stored messages.
-	if $isobject(items),$isobject(pEvidence.traffic),'$data(lastRun) {
-		set it=pEvidence.traffic.%GetIterator()
-		while it.%GetNext(.k,.t) { if $isobject(t."senders_seen"),t."senders_seen".%Size()>0 { set busy(t.item)="" } }
+	if $isobject(items),$isobject(pEvidence.traffic) {
+		set tested=0
 		set it=items.%GetIterator()
-		while it.%GetNext(.k,.name) {
-			continue:'$data(busy(name))
-			if ##class(BlastRadius.Evidence.Wiring).TransformsOf(name).transforms.%Size()>0 {
-				do reasons.%Push(name_" transforms live traffic, and no shadow-run was done on stored messages.")
-				set floor="HOLD"
+		while it.%GetNext(.k,.name) { set:$data(ran(name)) tested=1 }
+		if 'tested {
+			set it=pEvidence.traffic.%GetIterator()
+			while it.%GetNext(.k,.t) { if $isobject(t."senders_seen"),t."senders_seen".%Size()>0 { set busy(t.item)="" } }
+			set it=items.%GetIterator()
+			while it.%GetNext(.k,.name) {
+				continue:'$data(busy(name))
+				if ##class(BlastRadius.Evidence.Wiring).TransformsOf(name).transforms.%Size()>0 {
+					do reasons.%Push(name_" transforms live traffic, and no shadow-run was done on stored messages.")
+					set floor="HOLD"
+				}
 			}
 		}
 	}
@@ -167,6 +183,22 @@ ClassMethod Result(pFloor As %String, pProposed As %String, pReasons As %Dynamic
 {
 	set final=$select(..Rank(pProposed)>..Rank(pFloor):pProposed,1:pFloor)
 	quit {"verdict":(final),"floor":(pFloor),"proposed":(pProposed),"reasons":(pReasons),"tasks":(pTasks)}
+}
+
+/// True when the text names pName as a whole word, in any case. "Retire LIS-OLD" does not name a sender called LIS.
+ClassMethod Names(pText As %String, pName As %String) As %Boolean
+{
+	set text=$zconvert(pText,"L"), name=$zconvert(pName,"L"), len=$length(name)
+	set word="abcdefghijklmnopqrstuvwxyz0123456789-_"
+	set from=0
+	for {
+		set from=$find(text,name,from) quit:from=0
+		// A dot is part of a name like LAB-OLD.Router, and the end of a sentence otherwise.
+		set before=$extract(text,from-len-1) set:before="." before=$extract(text,from-len-2)
+		set after=$extract(text,from) set:after="." after=$extract(text,from+1)
+		quit:((before="")||(word'[before))&&((after="")||(word'[after))
+	}
+	quit from>0
 }
 
 /// Rules and transforms are named too; only hosts have traffic.

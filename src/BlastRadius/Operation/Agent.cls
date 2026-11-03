@@ -25,6 +25,7 @@ Method OnMessage(pRequest As BlastRadius.Msg.ReviewRequest, Output pResponse As 
 		set ^||BR("failed")=$$$ISERR(scChat)
 		set elapsed=($zh-t0)*1000\1
 		set evidence=##class(BlastRadius.Agent.EvidenceLog).CollectEvidence()
+		if pRequest.Round>1 do ..CarryShadowRuns(pRequest.CRId,evidence)
 		set decision=""
 		if $isobject(evidence.decision) set decision=evidence.decision.%Get(evidence.decision.%Size()-1)
 		set answers=""
@@ -47,8 +48,33 @@ Method OnMessage(pRequest As BlastRadius.Msg.ReviewRequest, Output pResponse As 
 
 		do ..SendToolTrace(pRequest)
 		do ..Save(pRequest,pResponse,evidence,gate,session)
-	} catch ex { set sc=ex.AsStatus() }
+	} catch ex {
+		set sc=ex.AsStatus()
+		do ..MarkFailed(pRequest.CRId,$system.Status.GetOneErrorText(sc))
+	}
 	quit sc
+}
+
+/// A review must not look as if it is still running after it died, because the screen would wait for ever.
+ClassMethod MarkFailed(pCRId As %String, pError As %String)
+{
+	set r=##class(BlastRadius.Data.Review).Find(pCRId)
+	quit:'$isobject(r)
+	set r.Status="DONE", r.Verdict="HOLD"
+	set r.GateReasons=[("The review failed: "_pError)].%ToJSON()
+	do r.%Save()
+}
+
+/// Owners answer about what round one's shadow-run found. If the agent does not run it again, their answers still apply to that run.
+ClassMethod CarryShadowRuns(pCRId As %String, pEvidence As %DynamicObject)
+{
+	quit:$isobject(pEvidence.shadow)
+	set r=##class(BlastRadius.Data.Review).Find(pCRId)
+	quit:'$isobject(r)
+	quit:r.Evidence.Size=0
+	do r.Evidence.Rewind()
+	set before={}.%FromJSON(r.Evidence)
+	if $isobject(before.shadow) do pEvidence.%Set("shadow",before.shadow)
 }
 
 Method MarkInReview(pCRId As %String)

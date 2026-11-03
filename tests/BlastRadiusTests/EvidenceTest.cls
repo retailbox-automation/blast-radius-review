@@ -15,7 +15,7 @@ Method TestTrafficFindsTheUndeclaredSender()
 	set a=..Sender(t,"annex-7")
 	do $$$AssertTrue($isobject(a),"annex-7 appears in traffic")
 	do $$$AssertEquals(a.messages,41)
-	do $$$AssertEquals(a.pattern,"Tuesdays 06:00")
+	do $$$AssertEquals(a.pattern,"Tuesdays 06:00 UTC")
 	do $$$AssertEquals(a.configured,0)
 	do $$$AssertEquals(t."active_senders_not_in_configuration".%ToJSON(),"[""annex-7""]")
 }
@@ -78,11 +78,11 @@ Method TestShadowRunFindsTheLostField()
 }
 
 /// On a route with a thousand newer messages, a rare sender must still get into the sample.
-/// The pulse on the screen comes from the headers: annex-7 sent on four or five Tuesdays and on no other day.
+/// The pulse on the screen comes from the headers: annex-7 sent on four Tuesdays and on no other day.
 Method TestPulseIsTheRealTuesdays()
 {
 	set p=##class(BlastRadius.Evidence.Traffic).Pulse("annex-7","LAB-OLD.Router")
-	do $$$AssertTrue((p.%Size()=4)||(p.%Size()=5),"one entry per Tuesday in the window")
+	do $$$AssertEquals(p.%Size(),4,"one entry per Tuesday")
 	set total=0, it=p.%GetIterator()
 	while it.%GetNext(.k,.d) {
 		set total=total+d.messages
@@ -196,6 +196,71 @@ Method TestReplayKeyMatchesThePrompt()
 	do $$$AssertEquals(##class(BlastRadius.Replay.Recorder).KeyFromPrompt(prompt),direct,"comments do not change the key")
 	set other=##class(BlastRadius.Replay.Recorder).Key("Retire LAB-OLD",2,"[{""key"":""sender:annex-7"",""action"":""Reject""}]")
 	do $$$AssertNotEquals(other,direct,"the owner's decision does")
+}
+
+/// The agent chooses its own window, so a short one cannot clear the gate: annex-7 sends once a week.
+Method TestAShortWindowDoesNotClearTheGate()
+{
+	set e={"traffic":[{"item":"LAB-OLD.Router","window_days":1,"senders_seen":[],"active_senders_not_in_configuration":[]}],"queue":[{"item":"LAB-OLD.Router","queued":0}]}
+	set r=##class(BlastRadius.Gate.Floor).Decide(e,{"verdict":"APPLY","summary":"s","items":["LAB-OLD.Router"]},"Retire it")
+	do $$$AssertEquals(r.verdict,"HOLD")
+	do $$$AssertTrue(r.reasons.%ToJSON()["annex-7","the gate looked at 30 days itself")
+}
+
+/// A monthly batch is quiet between runs. Unlike the feeds that moved, it has sent nowhere else since.
+Method TestAQuietSenderThatMovedNowhereStillCounts()
+{
+	set h=##class(Ens.MessageHeader).%New()
+	set h.SourceConfigName="monthly-batch", h.TargetConfigName="LAB-OLD.Router", h.Type=1
+	set h.TimeCreated=$zdatetime(($ztimestamp-20)_",21600",3), h.MessageBodyClassName="EnsLib.HL7.Message"
+	do $$$AssertStatusOK(h.%Save())
+	set t=##class(BlastRadius.Evidence.Traffic).Links("LAB-OLD.Router",30)
+	do h.%DeleteId(h.%Id())
+	set found=t."active_senders_not_in_configuration".%ToJSON()
+	do $$$AssertTrue(found["monthly-batch","the quiet sender counts")
+	do $$$AssertTrue(found'["orders-ed","control: a feed that moved does not")
+	do $$$AssertEquals(..Sender(t,"monthly-batch")."silent_since_last",1)
+	do $$$AssertEquals(..Sender(t,"orders-ed")."silent_since_last",0,"control")
+}
+
+/// A shadow-run only ever runs data transforms, whatever class the model names.
+Method TestShadowRunRefusesAClassThatIsNotATransform()
+{
+	set r=##class(BlastRadius.Evidence.Shadow).Run("LAB-OLD.Router","%Library.File","DemoHospital.DTL.OrderToLabNew")
+	do $$$AssertTrue(r.error["No such transform","refused")
+	set c=##class(BlastRadius.Evidence.Shadow).Run("LAB-OLD.Router","DemoHospital.DTL.OrderToLabOld","DemoHospital.DTL.OrderToLabNew",2)
+	do $$$AssertEquals(c.error,"","control: real transforms run")
+}
+
+/// A seed is good for the day it ran and the next, and a seed that died half way is never reused.
+Method TestSeedAge()
+{
+	set today=+$ztimestamp
+	set kept=$get(^BlastRadius.Seed("done")), began=$get(^BlastRadius.Seed("started"))
+	set ^BlastRadius.Seed("done")=$zdatetime(today_",0",3), ^BlastRadius.Seed("started")=^BlastRadius.Seed("done")
+	do $$$AssertEquals(##class(DemoHospital.Seed).NeedsReset(today),0,"today")
+	do $$$AssertEquals(##class(DemoHospital.Seed).NeedsReset(today+1),0,"next day")
+	do $$$AssertEquals(##class(DemoHospital.Seed).NeedsReset(today+2),1,"two days on")
+	kill ^BlastRadius.Seed("done")
+	do $$$AssertEquals(##class(DemoHospital.Seed).NeedsReset(today),1,"began and never finished")
+	kill ^BlastRadius.Seed("started")
+	do $$$AssertEquals(##class(DemoHospital.Seed).NeedsReset(today),0,"never began")
+	set ^BlastRadius.Seed("done")=kept
+	set:began'="" ^BlastRadius.Seed("started")=began
+}
+
+/// Exactly four batches whichever day it is seeded, all still inside the window two days later.
+Method TestAnnexPlanIsTheLastFourTuesdays()
+{
+	for offset=0:1:6 {
+		set today=+$ztimestamp+offset
+		set d=##class(DemoHospital.Seed).LastTuesdays(today,.days)
+		do $$$AssertEquals(days,4,"four Tuesdays")
+		do $$$AssertEquals($zdate(d,10),2,"the last is a Tuesday")
+		do $$$AssertTrue((today-days(1))<=28,"the oldest is at most 28 days back")
+		do $$$AssertTrue((today-d)<=7,"the newest is at most 7 days back")
+		do $$$AssertTrue((today-d)>=1,"never today")
+	}
 }
 
 }

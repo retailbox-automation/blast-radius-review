@@ -52,6 +52,10 @@ ClassMethod OnContainerStart() As %Status
 {
 	set sc=$$$OK
 	try {
+		if ##class(DemoHospital.Seed).NeedsReset() {
+			write "The demo's data is out of date or incomplete, so it will be seeded again.",!
+			$$$ThrowOnError(##class(DemoHospital.Seed).Reset())
+		}
 		// Stored message timestamps need to be recent, so seeding waits for the day the judge runs it.
 		do ##class(Ens.Director).GetProductionStatus(.name,.state)
 		if state'=1 {

@@ -27,7 +27,7 @@ Senders seen only before the date the request says traffic moved are expected: s
 
 Owner answers, when there are any, come as JSON with a key, an action and a comment. A "Confirm" means the owner takes responsibility for that point, including what they say they will do next, so stop treating that point as a reason to hold. Mark a confirmed shadow-run field "intended". A "Reject" means hold. A confirmation only keeps the hold if its comment asks you to wait for something that has not happened.
 
-Write the summary for the engineer who asked: at most three sentences, plain words, with the sender names and counts copied exactly from the tools. Use relative time such as "last Tuesday" rather than dates. Say which owner answered and how.
+Write the summary for the engineer who asked: at most three sentences, plain words, with the sender names and counts copied exactly from the tools. Name the weekday, such as "last Tuesday", and never a date or a number of days ago, because this summary may be read on another day. Say which owner answered and how.
 }
 
 }

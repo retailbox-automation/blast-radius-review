@@ -10,7 +10,7 @@ An engineer writes "Retire LAB-OLD; everything moved to LAB-NEW last month." Eve
 
 ```
 HOLD
-annex-7 sends to LAB-OLD.Router (41 messages in 30 days, Tuesdays 06:00), and nothing declares that link.
+annex-7 sends to LAB-OLD.Router (41 messages in 30 days, Tuesdays 06:00 UTC), and nothing declares that link.
 Shadow-run: 3 of 120 stored messages lose field ORC-12, and nothing says that is intended.
 ```
 
@@ -50,7 +50,7 @@ The decision has four outcomes: **APPLY**, **APPLY-AFTER-DRAIN**, **CANARY-FIRST
 
 | Claim | How to check | What you will see |
 |---|---|---|
-| The agent finds a sender no configuration declares | Run the first preset | HOLD naming `annex-7`, 41 messages, Tuesdays 06:00 |
+| The agent finds a sender no configuration declares | Run the first preset | HOLD naming `annex-7`, 41 messages, Tuesdays 06:00 UTC |
 | The portal cannot show that sender | Open *Interoperability > View > Interface Maps* | Five feeds, `orders-research` and the ADT route, but no row for `annex-7`: its target comes from a Lookup Table at run time |
 | The shadow-run is real | `tests/run.sh EvidenceTest` | `TestShadowRunFindsTheLostField`, against stored HL7 and the real DTL classes |
 | A shadow-run touches nothing | same | `TestShadowRunSavesNothing` counts rows before and after |
@@ -61,7 +61,7 @@ The decision has four outcomes: **APPLY**, **APPLY-AFTER-DRAIN**, **CANARY-FIRST
 
 ## Quick start
 
-You need Docker with about 15 GB free. It takes about five minutes the first time.
+You need Docker with Compose 2.24 or newer and about 15 GB free. It takes about five minutes the first time.
 
 **1. Get the image.** It is not on any public registry, so download it yourself from the [Early Access portal](https://evaluation.intersystems.com/Eval/early-access/AIHub) (*AI Hub* program): `irishealth-community-2027.1.0AI.109.0-docker.tar.gz` for x64, or `irishealth_arm64-community-2027.1.0AI.109.0-docker.tar.gz` for Apple Silicon and other ARM machines. The plain `iris-community` image will not work: it has no HL7 classes.
 
@@ -140,13 +140,15 @@ The model is good at two things here: mapping words to production items, and jud
 
 | Rule | Floor |
 |---|---|
-| No decision, an unknown verdict, or no items named | HOLD |
-| A traffic check that failed. If the agent skipped a check, the gate runs it itself and judges the result | HOLD |
+| No decision, an unknown verdict, or no item the production has | HOLD |
+| A traffic check that failed. If the agent skipped a check or looked at fewer than 30 days, the gate runs it itself and judges the result | HOLD |
 | An active sender nothing declares, unless the request names it or its owner confirmed | HOLD |
-| A shadow-run difference not marked intended, and not accepted by an owner | HOLD |
-| A router that transforms live traffic, changed without a shadow-run | HOLD |
+| A shadow-run difference not marked intended, and not accepted by an owner. Every run counts, not only the last | HOLD |
+| A router that transforms live traffic, changed without a shadow-run on an item the decision names | HOLD |
 | An owner rejected | HOLD |
 | Messages still queued on what is changing | APPLY-AFTER-DRAIN |
+
+Active means the sender sent in the last 14 days, or sent earlier in the window and has sent nowhere else since, which is how a monthly batch looks. The feeds that moved have sent elsewhere, so they do not count. Whether a difference is intended stays the agent's judgement, which is the one thing here it is trusted with.
 
 The model is also propose-only by policy. `BlastRadius.Agent.Auth` is an allow list on `%AI.Policy.Authorization`, and `ApplyChange` is not on it. The tool exists so the refusal can be seen: `BlastRadius.Agent.Audit` writes it to a table through `%LogDenial`.
 
@@ -210,7 +212,7 @@ Use a test instance. This is a demo, so its web applications ask for no password
 |---|---|---|---|---|
 | `gemma4:31b` | Local, through Ollama on a Mac Studio | 22,383 prompt + 4,043 completion tokens, 14 tool calls | about 1.5 minutes | $0 |
 
-On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit AI Hub's default limit of 300 seconds, which is why the limit is a setting here.
+On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit the 300-second limit I had set, which is why the limit is now a setting.
 
 The screen shows tokens and tool calls for each review, and the cost when it knows the price. It never guesses a price: set `BR_PRICE_IN` and `BR_PRICE_OUT` for a hosted model. Every tool call is one row in `BlastRadius_Data.AuditEvent` and one message in Visual Trace, so you can see what the agent did, in what order, and what it was refused.
 
@@ -223,7 +225,7 @@ Things I ran into on build 109, in case they save you time:
 - **`EnsLib.AI.Agent.OutboundAdapter` works and has no documentation.** Its source in the image is the reference. `AgentClass`, `AuthPolicy` and `AuditPolicy` are production settings, and `OnBeforeAgentInit` is a good place to choose a provider from the environment.
 - **Every class method of a `%AI.Tool` class is offered to the model.** A helper of mine showed up as a tool and a model called it. Only the allow list stopped it. Helpers belong in another class, and `tests` checks that with `%Discover()`.
 - **`%SQL.Statement.%ExecDirect` does not throw on a bad statement.** `%Next()` returns 0, which an agent tool reads as "no rows", or here, "nobody uses this". All SQL here goes through `BlastRadius.Evidence.Sql`, which throws.
-- **A run stops after 300 seconds unless you say otherwise.** The error is `<%AICore>Timeout: Wall-clock timeout (300000 ms) exceeded before a final response`. `timeout_ms` in the session config changes it, and `request_timeout_secs` under `http_config` in the provider config limits one model request. `BlastRadius.Agent.Adapter` sets both from `BR_LLM_TIMEOUT_S`.
+- **Two time limits are worth knowing.** `timeout_ms` in the session config limits a whole run, with `<%AICore>Timeout: Wall-clock timeout (300000 ms) exceeded before a final response`. `request_timeout_secs` under `http_config` in the provider config limits one model request. I found both names by reading strings in `irisllm.so`. `BlastRadius.Agent.Adapter` sets both from `BR_LLM_TIMEOUT_S`.
 - **AI Hub stops a model that keeps getting the same tool result:** `<%AICore>LoopDetected: Agentic loop stalled: no new evidence from tool results after 4 assessment(s)`. I saw this with a fake provider that repeated one call.
 - **A production cannot start from an IPM `Invoke`.** `Ens.Director.StartProduction` failed with `ErrCanNotAcquireRuntimeLock` after 30 seconds, and what the method had already set was rolled back, so the package manager runs it inside a transaction. `BlastRadius.Install.AtIpmInstall` leaves the start to a background job that waits for the transaction to end.
 - **`call.arguments` is a JSON string in audit hooks and an object in authorization hooks** (known, bug report 14, still so on 109).
@@ -236,6 +238,7 @@ This is a prototype, built in a contest window.
 - The shadow-run compares HL7 messages only. It samples 120: every sender gets a share, and the rest go to the newest messages.
 - CANARY-FIRST is a verdict. There is no canary mechanism behind it.
 - Traffic can only show what was sent inside the window. A sender that runs once a quarter stays invisible unless the window covers it.
+- A shadow-run executes your transforms on stored messages. Custom code in a transform that has side effects will still have them.
 - Demo web applications have no authentication, and ports bind to `127.0.0.1`. Do not expose them.
 
 ## Troubleshooting
@@ -246,6 +249,7 @@ This is a prototype, built in a contest window.
 | `"ready":false` for more than two minutes | `docker logs blast-radius-review` shows the seed or the error |
 | HOLD saying replay only knows the recorded requests | That text has no recording. Pick a preset, or switch to live mode |
 | Port 52773 or 1972 already in use | Stop the other IRIS container |
+| Counts differ from this README some days after the first start | `docker compose restart`. A seed older than a day is replaced on start, and the earlier reviews go with it |
 
 ## Build history and AI assistance
 

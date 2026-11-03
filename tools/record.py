@@ -43,6 +43,8 @@ def show(card):
     if denied:
         print("  denied:", denied)
     print("  tools:", " ".join(e["tool"] for e in card["audit"]))
+    if re.search(r"\b\d+ days? ago", card["summary"] or ""):
+        print("  WARNING: the summary counts days, which will be wrong on another day, do not keep this recording")
     for number in unsupported_numbers(card):
         print(f"  WARNING: {number} in the summary is in no tool result, do not keep this recording")
     sys.stdout.flush()

@@ -23,6 +23,7 @@ ClassMethod Run() As %Status
 	set sc=$$$OK
 	try {
 		set t0=$zh
+		set ^BlastRadius.Seed("started")=$zdatetime($ztimestamp,3)
 		kill ^||plan
 		set now=$ztimestamp, today=+now
 		set n=0
@@ -39,6 +40,30 @@ ClassMethod Run() As %Status
 		write "seeded ",n," sessions in ",$fnumber($zh-t0,"",1),"s",!
 	} catch ex { set sc=ex.AsStatus() }
 	quit sc
+}
+
+/// A seed is good for the day it ran and the next. After that the oldest batches start to leave the 30-day window.
+/// A seed that began and never finished left messages with today's timestamps, and is never reused.
+ClassMethod NeedsReset(pToday As %Integer = {+$ztimestamp}) As %Boolean
+{
+	set done=$get(^BlastRadius.Seed("done"))
+	quit:done="" $get(^BlastRadius.Seed("started"))'=""
+	quit (pToday-$zdateh($extract(done,1,10),3))>1
+}
+
+/// Wipes the demo's messages and reviews, so the next Run starts clean.
+ClassMethod Reset() As %Status
+{
+	set sc=##class(Ens.Director).StopProduction(30,1)
+	do ##class(Ens.Purge).PurgeAll(.d,0,0,1)
+	kill ^BlastRadius.Seed
+	do ##class(EnsLib.HL7.Message).%KillExtent()
+	do ##class(BlastRadius.Data.Review).%KillExtent()
+	do ##class(BlastRadius.Data.AuditEvent).%KillExtent()
+	do ##class(EnsLib.Workflow.TaskResponse).%KillExtent()
+	do ##class(EnsLib.Workflow.Worklist).%KillExtent()
+	set ^BlastRadius.CR=141
+	quit $$$OK
 }
 
 /// A cheap repeatable pseudo-random number in 0..(pMax-1), so the same counts come out every run.
@@ -75,12 +100,23 @@ ClassMethod PlanAdt(pToday As %Integer, ByRef pN As %Integer)
 	}
 }
 
-/// Every Tuesday at about 06:00. Returns the date of the last batch, so the queued tail can sit on it.
+/// The last four Tuesdays before pToday in pDays(1) to pDays(4), oldest first. Returns the newest.
+ClassMethod LastTuesdays(pToday As %Integer, Output pDays) As %Integer
+{
+	kill pDays
+	set pDays=0, d=pToday-1
+	while pDays<4 {
+		if $zdate(d,10)=2 { set pDays=pDays+1, pDays(5-pDays)=d }
+		set d=d-1
+	}
+	quit pDays(4)
+}
+
+/// Four Tuesdays at about 06:00 UTC, so the screen looks the same whichever day it is seeded. Returns the date of the last batch, so the queued tail can sit on it.
 ClassMethod PlanAnnex(pToday As %Integer, ByRef pN As %Integer) As %Integer
 {
 	set state=77
-	set tuesdays=0
-	for d=pToday-29:1:pToday-1 { if $zdate(d,10)=2 { set tuesdays=tuesdays+1, tuesdays(tuesdays)=d } }
+	do ..LastTuesdays(pToday,.tuesdays)
 	set total=..#ANNEXTOTAL-..#QUEUED
 	set perWeek=total\tuesdays, extra=total#tuesdays
 	set multiLeft=..#ANNEXMULTI

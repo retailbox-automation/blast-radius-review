@@ -69,10 +69,50 @@ Method TestUnfinishedRunIsNotRecorded()
 	kill ^||BR
 }
 
-/// AI Hub stops a run after 300 seconds, which is too short for a local model on a busy machine.
-Method TestLiveTimeoutIsLongerThanTheDefault()
+/// A local model on a busy machine can take far longer than a hosted one.
+Method TestLiveTimeoutAllowsASlowLocalModel()
 {
-	do $$$AssertTrue(##class(BlastRadius.Agent.Adapter).TimeoutSeconds()>300)
+	do $$$AssertEquals(##class(BlastRadius.Agent.Adapter).TimeoutSeconds(),900)
+}
+
+/// The live time limit changes one key and leaves the production's other session settings alone.
+Method TestTimeoutKeepsTheOtherSessionSettings()
+{
+	set c={}.%FromJSON(##class(BlastRadius.Agent.Adapter).WithTimeout("{""max_iterations"":14,""max_tokens"":2500,""timeout_ms"":300000}",900))
+	do $$$AssertEquals(c."max_iterations",14)
+	do $$$AssertEquals(c."max_tokens",2500)
+	do $$$AssertEquals(c."timeout_ms",900000)
+	do $$$AssertEquals({}.%FromJSON(##class(BlastRadius.Agent.Adapter).WithTimeout("",5))."timeout_ms",5000,"empty setting")
+}
+
+/// A review that dies must not look as if it is still running, because the screen would wait for ever.
+Method TestAFailedReviewEndsAsAHold()
+{
+	set r=##class(BlastRadius.Data.Review).%New()
+	set r.CRId="CR-TEST-"_$random(1000000), r.Text="t", r.Status="IN-REVIEW"
+	do $$$AssertStatusOK(r.%Save())
+	do ##class(BlastRadius.Operation.Agent).MarkFailed(r.CRId,"boom")
+	set f=##class(BlastRadius.Data.Review).Find(r.CRId)
+	do $$$AssertEquals(f.Status,"DONE")
+	do $$$AssertEquals(f.Verdict,"HOLD")
+	do $$$AssertTrue(f.GateReasons["boom")
+	do f.%DeleteId(f.%Id())
+}
+
+/// If the agent skips the shadow-run in round two, the owners' answers still apply to the run from round one.
+Method TestSecondRoundKeepsTheFirstRoundsShadowRun()
+{
+	set r=##class(BlastRadius.Data.Review).%New()
+	set r.CRId="CR-TEST-"_$random(1000000), r.Text="t", r.Status="IN-REVIEW"
+	do r.Evidence.Write({"shadow":[{"item":"LAB-OLD.Router"}]}.%ToJSON())
+	do $$$AssertStatusOK(r.%Save())
+	set none={}
+	do ##class(BlastRadius.Operation.Agent).CarryShadowRuns(r.CRId,none)
+	do $$$AssertEquals(none.shadow.%Size(),1,"carried over")
+	set own={"shadow":[{"item":"LAB-NEW.Router"},{"item":"X"}]}
+	do ##class(BlastRadius.Operation.Agent).CarryShadowRuns(r.CRId,own)
+	do $$$AssertEquals(own.shadow.%Size(),2,"control: a new run stands")
+	do r.%DeleteId(r.%Id())
 }
 
 Method TestDenialIsWrittenToTheAuditTable()

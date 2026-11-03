@@ -6,7 +6,17 @@ Parameter CONTENTTYPE = "application/json";
 
 Parameter CHARSET = "UTF-8";
 
-Parameter HandleCorsRequest = 1;
+Parameter HandleCorsRequest = 0;
+
+/// The port is on this machine, but a browser on this machine also opens other sites. Their pages must not start reviews or answer tasks.
+ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue As %Boolean) As %Status
+{
+	set origin=%request.GetCgiEnv("HTTP_ORIGIN")
+	if (origin'=""),($piece(origin,"//",2)'=%request.GetCgiEnv("HTTP_HOST")) {
+		set %response.Status="403 Forbidden", pContinue=0
+	}
+	quit $$$OK
+}
 
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
@@ -60,10 +70,11 @@ ClassMethod Submit() As %Status
 	set msg.CRId=id, msg.Text=text, msg.Requester=body.requester, msg.Supersedes=body.supersedes
 	$$$QuitOnError(##class(Ens.Director).CreateBusinessService("BlastRadius.ChangeRequests",.svc))
 	$$$QuitOnError(svc.ProcessInput(msg,.out))
-	set r.SessionId=+out.StringValue
-	$$$QuitOnError(r.%Save())
+	// The review may already have finished, so only this one column is written.
+	set sid=+out.StringValue
+	&sql(UPDATE BlastRadius_Data.Review SET SessionId=:sid WHERE CRId=:id)
 	set %response.Status="202 Accepted"
-	write {"id":(id),"status":"IN-REVIEW","session_id":(r.SessionId)}.%ToJSON()
+	write {"id":(id),"status":"IN-REVIEW","session_id":(sid)}.%ToJSON()
 	quit $$$OK
 }
 

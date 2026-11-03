@@ -1,13 +1,5 @@
 // Development only: wipes the demo's messages and seeds them again.
-set sc=##class(Ens.Director).StopProduction(30,1)
-do ##class(Ens.Purge).PurgeAll(.d,0,0,1)
-kill ^BlastRadius.Seed
-do ##class(EnsLib.HL7.Message).%KillExtent()
-do ##class(BlastRadius.Data.Review).%KillExtent()
-do ##class(BlastRadius.Data.AuditEvent).%KillExtent()
-do ##class(EnsLib.Workflow.TaskResponse).%KillExtent()
-do ##class(EnsLib.Workflow.Worklist).%KillExtent()
-set ^BlastRadius.CR=141
+do ##class(DemoHospital.Seed).Reset()
 write "purged",!
 do ##class(BlastRadius.Install).OnContainerStart()
 halt

@@ -177,4 +177,90 @@ Method TestNoItemsHolds()
 	do $$$AssertEquals(r.verdict,"HOLD")
 }
 
+/// An empty verdict must not outrank the floor.
+Method TestEmptyVerdictHolds()
+{
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Rank(""),0)
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Rank("APPLY"),1,"control")
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Rank("HOLD"),4,"control")
+	set r=##class(BlastRadius.Gate.Floor).Decide({},{"verdict":"","summary":"s","items":["nightly-report.Out"]},"Remove it")
+	do $$$AssertEquals(r.verdict,"HOLD")
+}
+
+/// A name with the wrong case, or a rule's name alone, gives the gate nothing to check.
+Method TestItemsNotInTheProductionHold()
+{
+	set r=##class(BlastRadius.Gate.Floor).Decide({},{"verdict":"APPLY","summary":"s","items":["lab-old.router"]},"Retire it")
+	do $$$AssertEquals(r.verdict,"HOLD")
+	do $$$AssertTrue(r.reasons.%ToJSON()["None of the items","the reason says so")
+}
+
+/// A sender is named as a whole word, in any case. Part of another name does not count.
+Method TestRequestNamesASenderAsAWholeWord()
+{
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Names("Retire LIS-OLD","LIS"),0)
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Names("the annex-7-batch job","annex-7"),0)
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Names("Retire LAB-OLD.Router","LAB-OLD"),0)
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Names("the owner of annex-7 will move it","annex-7"),1)
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Names("Ask ANNEX-7.","annex-7"),1)
+	do $$$AssertEquals(##class(BlastRadius.Gate.Floor).Names("annex-7, then the rest","annex-7"),1)
+}
+
+/// A run that found a difference still counts after later runs that found none.
+Method TestALaterRunDoesNotHideAFinding()
+{
+	set e=..Evidence(0)
+	do e.shadow.%Push({"item":"LAB-OLD.Router","current":"Demo.New","candidate":"Demo.New","messages_processed":120,"messages_failed":0,"field_differences":[]})
+	do e.shadow.%Push({"item":"LAB-OLD.Router","current":"Demo.Old","candidate":"Demo.V2","messages_processed":120,"messages_failed":0,"field_differences":[]})
+	set r=##class(BlastRadius.Gate.Floor).Decide(e,..Decision("APPLY","unintended"),"annex-7 moves too")
+	do $$$AssertEquals(r.verdict,"HOLD")
+	do $$$AssertTrue(r.reasons.%ToJSON()["ORC-12")
+}
+
+/// The same difference found by two runs is one question for the owner.
+Method TestTwoRunsAskTheOwnerOnce()
+{
+	set e=..Evidence(0)
+	do e.shadow.%Push({"item":"LAB-OLD.Router","current":"Demo.Old","candidate":"Demo.V2","messages_processed":120,"messages_failed":0,"field_differences":[{"field":"ORC-12","kind":"lost","messages":3}]})
+	set r=##class(BlastRadius.Gate.Floor).Decide(e,..Decision("APPLY","unintended"),"annex-7 moves too")
+	set asked=0, it=r.tasks.%GetIterator()
+	while it.%GetNext(.k,.t) { set:t.key="diff:ORC-12" asked=asked+1 }
+	do $$$AssertEquals(asked,1)
+}
+
+ClassMethod BusyRouter(pRun As %DynamicObject) As %DynamicObject
+{
+	quit {
+		"traffic":[{"item":"LAB-OLD.Router","window_days":30,"senders_seen":[{"sender":"annex-7","messages":41,"pattern":"Tuesdays 06:00"}],"active_senders_not_in_configuration":[]}],
+		"queue":[{"item":"LAB-OLD.Router","queued":0}],
+		"shadow":[(pRun)]
+	}
+}
+
+/// The same transform on both sides tests nothing, so the router still has no shadow-run.
+Method TestSameTransformTwiceIsNotAShadowRun()
+{
+	set run={"item":"LAB-OLD.Router","current":"DemoHospital.DTL.OrderToLabOld","candidate":"DemoHospital.DTL.OrderToLabOld","messages_processed":120,"messages_failed":0,"field_differences":[]}
+	set r=##class(BlastRadius.Gate.Floor).Decide(..BusyRouter(run),{"verdict":"APPLY","summary":"s","items":["LAB-OLD.Router"]},"Retire it")
+	do $$$AssertEquals(r.verdict,"HOLD")
+	do $$$AssertTrue(r.reasons.%ToJSON()["no shadow-run")
+}
+
+/// A run on an item the decision does not name says nothing about the items it does name.
+Method TestARunElsewhereDoesNotCount()
+{
+	set run={"item":"ADT.Router","current":"Demo.Old","candidate":"Demo.New","messages_processed":120,"messages_failed":0,"field_differences":[]}
+	set r=##class(BlastRadius.Gate.Floor).Decide(..BusyRouter(run),{"verdict":"APPLY","summary":"s","items":["LAB-OLD.Router"]},"Retire it")
+	do $$$AssertEquals(r.verdict,"HOLD")
+	do $$$AssertTrue(r.reasons.%ToJSON()["no shadow-run")
+}
+
+/// Control for the two above: a real run on the named router clears the rule.
+Method TestARealRunClearsTheRule()
+{
+	set run={"item":"LAB-OLD.Router","current":"Demo.Old","candidate":"Demo.New","messages_processed":120,"messages_failed":0,"field_differences":[]}
+	set r=##class(BlastRadius.Gate.Floor).Decide(..BusyRouter(run),{"verdict":"APPLY","summary":"s","items":["LAB-OLD.Router"]},"Retire it")
+	do $$$AssertNotTrue(r.reasons.%ToJSON()["no shadow-run")
+}
+
 }

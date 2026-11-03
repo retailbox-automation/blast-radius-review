@@ -17,12 +17,15 @@ ClassMethod Links(pName As %String, pDays As %Integer = 30) As %DynamicObject
 		continue:sender=""
 		set configured=##class(BlastRadius.Evidence.Wiring).IsConfigured(sender,pName)
 		set active=(rs.l]]activeSince)
+		// Quiet is only reassuring if the sender has moved on. A monthly batch looks just as quiet as a feed that moved.
+		set silent=('active)&&('..SentElsewhereSince(sender,pName,rs.l))
 		set row={"sender":(sender),"messages":(+rs.n),"first_seen":(rs.f),"last_seen":(rs.l),"pattern":(..Pattern(sender,pName,since))}
 		do row.%Set("configured",configured,"boolean")
 		do row.%Set("still_active",active,"boolean")
+		do row.%Set("silent_since_last",silent,"boolean")
 		do row.%Set("days_since_last",$system.SQL.Functions.DATEDIFF("day",rs.l,$zdatetime($ztimestamp,3)),"number")
 		do senders.%Push(row)
-		if active,'configured do unknown.%Push(sender)
+		if (active||silent),'configured do unknown.%Push(sender)
 	}
 	set targets=[]
 	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT %EXACT(TargetConfigName) t, COUNT(*) n, MAX(TimeCreated) l FROM Ens.MessageHeader WHERE SourceConfigName=? AND Type=1 AND TimeCreated>=? GROUP BY %EXACT(TargetConfigName) ORDER BY 2 DESC",pName,since)
@@ -33,7 +36,14 @@ ClassMethod Links(pName As %String, pDays As %Integer = 30) As %DynamicObject
 	quit {"item":(pName),"window_days":(pDays),"senders_seen":(senders),"targets_seen":(targets),"active_senders_not_in_configuration":(unknown)}
 }
 
-/// A plain description of when a sender usually sends, such as "Tuesdays 06:00", read from the timestamps.
+/// True when the sender has sent to anything else since it last sent to pTarget.
+ClassMethod SentElsewhereSince(pSender As %String, pTarget As %String, pSince As %String) As %Boolean
+{
+	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT TOP 1 ID FROM Ens.MessageHeader WHERE SourceConfigName=? AND TargetConfigName<>? AND Type=1 AND TimeCreated>?",pSender,pTarget,pSince)
+	quit rs.%Next()
+}
+
+/// A plain description of when a sender usually sends, such as "Tuesdays 06:00 UTC", read from the timestamps, which are in UTC.
 ClassMethod Pattern(pSender As %String, pTarget As %String, pSince As %String) As %String
 {
 	set total=0, max=0, best=""
@@ -49,7 +59,7 @@ ClassMethod Pattern(pSender As %String, pTarget As %String, pSince As %String) A
 	quit:total=0 ""
 	if (max/total)>=0.8 {
 		set names="Sundays,Mondays,Tuesdays,Wednesdays,Thursdays,Fridays,Saturdays"
-		quit $piece(names,",",$piece(best,"|",1)+1)_" "_$translate($justify($piece(best,"|",2),2)," ","0")_":00"
+		quit $piece(names,",",$piece(best,"|",1)+1)_" "_$translate($justify($piece(best,"|",2),2)," ","0")_":00 UTC"
 	}
 	set dayCount=0, d="" for { set d=$order(days(d)) quit:d=""  set dayCount=dayCount+1 }
 	quit "about "_(total\dayCount)_" a day on "_dayCount_" days"

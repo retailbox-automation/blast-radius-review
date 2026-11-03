@@ -15,9 +15,10 @@ ClassMethod ConfiguredLinks(item As %String) As %String
 	quit ##class(BlastRadius.Agent.EvidenceLog).Keep("configured",##class(BlastRadius.Evidence.Wiring).Links(item))
 }
 
-/// What really happened in the message headers for one item over the last N days: every sender with count, last seen, how many days ago, usual schedule, whether a setting declares the link, and whether it is still active. Lists active senders that no setting declares.
+/// What really happened in the message headers for one item over the last N days, 30 at least: every sender with count, last seen, how many days ago, usual schedule, whether a setting declares the link, and whether it is still active. Lists active senders that no setting declares.
 ClassMethod TrafficLinks(item As %String, days As %Integer = 30) As %String
 {
+	set days=$select(+days<30:30,1:+days)
 	try { set r=##class(BlastRadius.Evidence.Traffic).Links(item,days) } catch ex { set r={"item":(item),"window_days":(days),"error":(ex.DisplayString())} }
 	quit ##class(BlastRadius.Agent.EvidenceLog).Keep("traffic",r)
 }

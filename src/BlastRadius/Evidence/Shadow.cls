@@ -3,11 +3,19 @@
 Class BlastRadius.Evidence.Shadow Extends %RegisteredObject
 {
 
+/// The model picks the class names, so nothing but a data transform is ever run.
+ClassMethod IsTransform(pClass As %String) As %Boolean
+{
+	quit:'##class(%Dictionary.CompiledClass).%ExistsId(pClass) 0
+	try { set is=$classmethod(pClass,"%Extends","Ens.DataTransform") } catch { set is=0 }
+	quit is
+}
+
 /// pItem is the host whose stored inbound messages form the sample. See Sample for how they are picked.
 ClassMethod Run(pItem As %String, pCurrent As %String, pCandidate As %String, pSample As %Integer = 120) As %DynamicObject
 {
-	if '##class(%Dictionary.CompiledClass).%ExistsId(pCurrent) quit {"error":("No such transform: "_pCurrent)}
-	if '##class(%Dictionary.CompiledClass).%ExistsId(pCandidate) quit {"error":("No such transform: "_pCandidate)}
+	if '..IsTransform(pCurrent) quit {"error":("No such transform: "_pCurrent)}
+	if '..IsTransform(pCandidate) quit {"error":("No such transform: "_pCandidate)}
 	set t0=$zh
 	set processed=0, changed=0, failed=0
 	kill fields

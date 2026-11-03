@@ -8,8 +8,8 @@ ClassMethod Cost(pModel As %String, pPromptTokens As %Integer, pCompletionTokens
 {
 	set in=$system.Util.GetEnviron("BR_PRICE_IN"), out=$system.Util.GetEnviron("BR_PRICE_OUT")
 	if (in'=""),(out'="") quit $fnumber((pPromptTokens*in+(pCompletionTokens*out))/1000000,"",6)
-	set m=$zconvert(pModel,"L")
-	if (m["gemma")||(m["granite")||(m["ollama") quit "0.000000"
+	set url=$system.Util.GetEnviron("BR_LLM_BASE_URL")
+	if (##class(BlastRadius.Agent.Adapter).Mode()="replay")||(url["host.docker.internal")||(url["localhost")||(url["127.0.0.1") quit "0.000000"
 	quit ""
 }
 

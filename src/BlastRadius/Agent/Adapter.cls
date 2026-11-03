@@ -11,11 +11,20 @@ ClassMethod Mode() As %String
 	quit $select(m="live":"live",1:"replay")
 }
 
-/// How long one review, and one model request inside it, may take. AI Hub stops a run after 300 seconds by default.
+/// How long one live review, and one model request inside it, may take. A local model on a busy machine can need far longer than a hosted one.
 ClassMethod TimeoutSeconds() As %Integer
 {
 	set s=+$system.Util.GetEnviron("BR_LLM_TIMEOUT_S")
 	quit $select(s>0:s,1:900)
+}
+
+/// The production's session settings, with only the time limit replaced.
+ClassMethod WithTimeout(pSettings As %String, pSeconds As %Integer) As %String
+{
+	set c={}
+	if pSettings'="" { set c={}.%FromJSON(pSettings) }
+	do c.%Set("timeout_ms",pSeconds*1000,"number")
+	quit c.%ToJSON()
 }
 
 Method OnBeforeAgentInit(ByRef agent As %AI.Agent) As %Status
@@ -24,7 +33,7 @@ Method OnBeforeAgentInit(ByRef agent As %AI.Agent) As %Status
 	if ..Mode()="live" {
 		set seconds=..TimeoutSeconds()
 		do config.%Set("http_config",{"request_timeout_secs":(seconds)})
-		set ..SessionConfigString={"timeout_ms":(seconds*1000)}.%ToJSON()
+		set ..SessionConfigString=..WithTimeout(..SessionConfigString,seconds)
 		set provider=$system.Util.GetEnviron("BR_LLM_PROVIDER")
 		if provider="" set provider="openai"
 		set key=$system.Util.GetEnviron("BR_LLM_API_KEY")

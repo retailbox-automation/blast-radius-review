@@ -4,7 +4,7 @@
 Class BlastRadius.Replay.Provider Extends %CSP.REST
 {
 
-Parameter HandleCorsRequest = 1;
+Parameter HandleCorsRequest = 0;
 
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
