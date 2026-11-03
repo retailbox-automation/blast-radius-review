@@ -3,7 +3,7 @@ ARG IMAGE=irishealth-community:2027.1.0AI.109.0
 FROM $IMAGE
 
 WORKDIR /home/irisowner/dev
-COPY . /home/irisowner/dev
+COPY --chown=irisowner:irisowner . /home/irisowner/dev
 
 # Compile the code at build time so a judge's first `docker compose up` starts in seconds.
 # Demo traffic is seeded at first start, so its 30-day window is relative to the day you run it.
