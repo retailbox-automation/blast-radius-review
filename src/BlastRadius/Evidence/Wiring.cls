@@ -24,13 +24,16 @@ ClassMethod Items(ByRef pItems) As %Status
 	quit $$$OK
 }
 
-/// Outbound links the configuration declares for one item, including routing rule targets.
+/// Outbound links anything declares for one item: settings, routing rule targets, and literal targets in its code.
 ClassMethod Outbound(pItem As Ens.Config.Item, ByRef pTargets)
 {
 	kill pTargets
 	try {
 		set conn=""
 		do $classmethod(pItem.ClassName,"OnGetConnections",.conn,pItem)
+		// The same scan the portal's Interface Maps uses: literal targets in the host's code.
+		// Without it this tool would call something undeclared that the portal can show.
+		do ##class(Ens.Config.Production).GetConnections(.conn,pItem.ClassName,pItem)
 		set t=""
 		for { set t=$order(conn(t)) quit:t=""  set pTargets(t)="" }
 	} catch ex {}

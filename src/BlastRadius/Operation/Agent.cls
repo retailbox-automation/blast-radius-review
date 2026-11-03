@@ -23,7 +23,7 @@ Method OnMessage(pRequest As BlastRadius.Msg.ReviewRequest, Output pResponse As 
 			set scChat=..Adapter.SendChat("You have not called SubmitDecision yet. Call it now, as your last action.",.llm,session)
 		}
 		set elapsed=($zh-t0)*1000\1
-		set evidence=##class(BlastRadius.Agent.Tools).CollectEvidence()
+		set evidence=##class(BlastRadius.Agent.EvidenceLog).CollectEvidence()
 		set decision=""
 		if $isobject(evidence.decision) set decision=evidence.decision.%Get(evidence.decision.%Size()-1)
 		set answers=""

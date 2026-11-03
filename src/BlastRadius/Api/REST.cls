@@ -99,7 +99,9 @@ ClassMethod Card(r As BlastRadius.Data.Review) As %DynamicObject
 	do res.%Set("evidence",$select(r.Evidence.Size>0:{}.%FromJSON(r.Evidence.Read(3000000)),1:{}))
 	do res.%Set("tasks",..Tasks(r.CRId))
 	do res.%Set("audit",..Audit(r.CRId))
-	do res.%Set("links",{"visual_trace":("/csp/"_ns_"/EnsPortal.VisualTrace.zen?SESSIONID="_r.SessionId),"message_viewer":("/csp/"_ns_"/EnsPortal.MessageViewer.zen"),"workflow_inbox":("/csp/"_ns_"/_DeepSee.UserPortal.Workflow.zen"),"production":("/csp/"_ns_"/EnsPortal.ProductionConfig.zen?PRODUCTION=DemoHospital.Production")})
+	// On IRIS for Health the namespace's portal lives under /csp/healthshare, not /csp.
+	set csp="/csp/healthshare/"_ns_"/"
+	do res.%Set("links",{"visual_trace":(csp_"EnsPortal.VisualTrace.zen?SESSIONID="_r.SessionId),"message_viewer":(csp_"EnsPortal.MessageViewer.zen"),"workflow_inbox":(csp_"_DeepSee.UserPortal.Workflow.zen"),"production":(csp_"EnsPortal.ProductionConfig.zen?PRODUCTION=DemoHospital.Production")})
 	quit res
 }
 

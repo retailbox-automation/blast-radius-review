@@ -75,6 +75,7 @@ ClassMethod Lookups()
 	do ##class(Ens.Util.LookupTable).%UpdateValue("LabCodesToLoinc","CBC","58410-2")
 	do ##class(Ens.Util.LookupTable).%UpdateValue("LabCodesToLoinc","K","2823-3")
 	do ##class(Ens.Util.LookupTable).%UpdateValue("LabCodesToLoinc","TSH","3016-3")
+	do ##class(Ens.Util.LookupTable).%UpdateValue("Annex7Routing","standing-orders","LAB-OLD.Router")
 	do ##class(Ens.Util.LookupTable).%UpdateValue("BlastRadiusOwners","Annex 7 Clinic","Owner-Annex7")
 	do ##class(Ens.Util.LookupTable).%UpdateValue("BlastRadiusOwners","Laboratory","Owner-Lab")
 }

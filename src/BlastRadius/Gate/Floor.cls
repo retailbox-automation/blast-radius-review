@@ -37,33 +37,35 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 		while it.%GetNext(.k,.a) { set answers(a.key)=a.action }
 	}
 
-	// Rule 1: a review with no traffic evidence for what it touches is not a review.
+	// Rule 1: a review needs evidence for everything it names. If the agent skipped a check, the gate runs it itself and judges the result.
 	set items=pDecision.items
 	if '$isobject(items)||(items.%Size()=0) {
 		do reasons.%Push("The agent named no production items.")
 		set floor="HOLD"
 	}
-	set seen=""
-	if $isobject(pEvidence.traffic) {
-		set it=pEvidence.traffic.%GetIterator()
-		while it.%GetNext(.k,.t) {
-			// A traffic check that failed is not a check. Nothing found and nothing looked at must not read the same.
-			if t.error'="" {
-				do reasons.%Push("The traffic check for "_t.item_" failed: "_t.error)
-				set floor="HOLD"
-				continue
-			}
-			set checked(t.item)=""
-		}
-	}
+	if '$isobject(pEvidence.traffic) { do pEvidence.%Set("traffic",[]) }
+	if '$isobject(pEvidence.queue) { do pEvidence.%Set("queue",[]) }
+	set it=pEvidence.traffic.%GetIterator()
+	while it.%GetNext(.k,.t) { set checked(t.item)="" }
+	set it=pEvidence.queue.%GetIterator()
+	while it.%GetNext(.k,.q) { set queued(q.item)="" }
 	if $isobject(items) {
 		set it=items.%GetIterator()
 		while it.%GetNext(.k,.name) {
 			continue:'..IsHost(name)
 			if '$data(checked(name)) {
-				do reasons.%Push("No traffic check was run for "_name_".")
-				set floor="HOLD"
+				try { set t=##class(BlastRadius.Evidence.Traffic).Links(name) } catch ex { set t={"item":(name),"window_days":30,"error":(ex.DisplayString())} }
+				do pEvidence.traffic.%Push(t)
 			}
+			if '$data(queued(name)) { do pEvidence.queue.%Push(##class(BlastRadius.Evidence.Traffic).QueueDepth(name)) }
+		}
+	}
+	// A traffic check that failed is not a check. Nothing found and nothing looked at must not read the same.
+	set it=pEvidence.traffic.%GetIterator()
+	while it.%GetNext(.k,.t) {
+		if t.error'="" {
+			do reasons.%Push("The traffic check for "_t.item_" failed: "_t.error)
+			set floor="HOLD"
 		}
 	}
 
@@ -84,7 +86,7 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 				}
 				continue:$get(answers(key))="Confirm"
 				continue:pRequestText[sender
-				do reasons.%Push(sender_" sends to "_t.item_" ("_detail_") and no setting declares that link.")
+				do reasons.%Push(sender_" sends to "_t.item_" ("_detail_"), and nothing declares that link.")
 				do tasks.%Push({"key":(key),"item":(sender),"reason":("Your feed "_sender_" still sends to "_t.item_" ("_detail_"). This change would retire that route. Can it move?")})
 				set floor="HOLD"
 			}

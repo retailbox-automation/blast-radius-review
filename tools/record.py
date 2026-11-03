@@ -23,6 +23,7 @@ def call(path, body=None):
 
 def settle(cr, statuses, timeout=420):
     end = time.time() + timeout
+    card = {"status": "not read yet"}
     while time.time() < end:
         card = call("/change-requests/" + cr)
         if card["status"] in statuses:

@@ -108,7 +108,7 @@ Method TestQueueRaisesApplyToDrain()
 Method TestQueueElsewhereIsIgnored()
 {
 	set e=..Evidence()
-	set e.queue=[{"item":"billing.Out","queued":9}]
+	set e.queue=[{"item":"billing.Out","queued":9},{"item":"LAB-OLD.Out","queued":0}]
 	set r=##class(BlastRadius.Gate.Floor).Decide(e,..Decision("APPLY"),"Retire LAB-OLD, annex-7 too")
 	do $$$AssertEquals(r.verdict,"APPLY")
 }
@@ -151,6 +151,16 @@ Method TestRouterWithoutShadowRunHolds()
 	set r=##class(BlastRadius.Gate.Floor).Decide(e,{"verdict":"APPLY","items":["LAB-OLD.Router"]},"Retire LAB-OLD.Router")
 	do $$$AssertEquals(r.verdict,"HOLD")
 	do $$$AssertTrue(r.reasons.%ToJSON()["no shadow-run")
+}
+
+/// An agent that skips a check gets no credit for it: the gate runs the check itself, and what it finds counts.
+Method TestGateRunsTheChecksTheAgentSkipped()
+{
+	set e={}
+	set r=##class(BlastRadius.Gate.Floor).Decide(e,{"verdict":"APPLY","items":["LAB-OLD.Out"]},"Retire LAB-OLD.Out")
+	do $$$AssertEquals(e.traffic.%Size(),1,"the traffic check was run")
+	do $$$AssertEquals(e.queue.%Size(),1,"the queue check was run")
+	do $$$AssertEquals(r.verdict,"APPLY-AFTER-DRAIN","and the 4 queued messages count against the agent's APPLY")
 }
 
 Method TestNoItemsHolds()

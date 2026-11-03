@@ -16,7 +16,7 @@ ClassMethod Go(pClasses As %String = "GateTest,PolicyTest,EvidenceTest,EndToEndT
 		set inst=$order(^UnitTest.Result(""),-1)
 		set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT Status,Description,Counter,TestMethod->Name m FROM %UnitTest_Result.TestAssert WHERE TestMethod->TestCase->TestSuite->TestInstance=?",inst)
 		while rs.%Next() {
-			if rs.Status=1 { set passed=passed+1 } else { set failed=failed+1 write "FAILED ",cls,".",rs.m,": ",rs.Description,! }
+			if rs.Status=1 { set passed=passed+1 } else { set failed=failed+1 write !,"FAILED ",cls,".",rs.m,": ",rs.Description,! }
 		}
 	}
 	write !,"RESULT passed=",passed," failed=",failed,!

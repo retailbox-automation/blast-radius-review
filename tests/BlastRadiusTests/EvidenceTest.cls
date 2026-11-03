@@ -40,6 +40,29 @@ Method TestConfigurationIsWrongInBothDirections()
 	do $$$AssertTrue(l.%ToJSON()'["annex-7","configuration knows nothing of annex-7")
 }
 
+/// The claim the whole demo rests on, against the portal's own code. Interface Maps must see the five feeds and must not see annex-7's link.
+Method TestInterfaceMapsCannotSeeTheSender()
+{
+	set sc=##class(Ens.InterfaceMaps.Utils).FindAllPaths(.paths,.cats,"DemoHospital.Production")
+	do $$$AssertStatusOK(sc)
+	set text="", k=""
+	for { set k=$order(paths(k),1,v) quit:k=""  set text=text_"~"_k_"="_$get(v) }
+	do $$$AssertTrue(text["orders-ed","control: Interface Maps sees a declared feed")
+	do $$$AssertTrue(text["LAB-NEW.Router","control: and its router")
+	// annex-7 is listed as a service, but with no route through LAB-OLD.Router.
+	set hit=0
+	for i=1:1:$length(text,"~") { set part=$piece(text,"~",i) if (part["annex-7")&&(part["LAB-OLD") { set hit=1 } }
+	do $$$AssertTrue('hit,"no path links annex-7 to LAB-OLD")
+}
+
+/// A literal target in code must count as declared, the same as the portal counts it.
+Method TestLiteralTargetInCodeCountsAsDeclared()
+{
+	do $$$AssertTrue(##class(BlastRadius.Evidence.Wiring).IsConfigured("orders-ed","LAB-NEW.Router"),"a setting declares it")
+	do $$$AssertTrue(##class(BlastRadius.Evidence.Wiring).IsConfigured("LAB-OLD.Router","LAB-OLD.Out"),"a rule declares it")
+	do $$$AssertTrue('##class(BlastRadius.Evidence.Wiring).IsConfigured("annex-7","LAB-OLD.Router"),"nothing declares this one")
+}
+
 Method TestShadowRunFindsTheLostField()
 {
 	set s=##class(BlastRadius.Evidence.Shadow).Run("LAB-OLD.Router","DemoHospital.DTL.OrderToLabOld","DemoHospital.DTL.OrderToLabNew",120)
@@ -52,6 +75,18 @@ Method TestShadowRunFindsTheLostField()
 	do $$$AssertEquals(f("ORC-12").kind,"lost")
 	do $$$AssertEquals(f("ORC-12").senders.%Get(0).sender,"annex-7")
 	do $$$AssertTrue($data(f("MSH-5")),"the receiving application changes, as intended")
+}
+
+/// On a route with a thousand newer messages, a rare sender must still get into the sample.
+Method TestRareSenderIsNotCrowdedOut()
+{
+	do ##class(BlastRadius.Evidence.Shadow).Sample("LAB-OLD.Router",30,.rows)
+	set n=0, id=""
+	for { set id=$order(rows(id),1,row) quit:id=""  set n=n+1, seen($list(row,1))=$get(seen($list(row,1)))+1 }
+	do $$$AssertEquals(n,30,"the sample has the size asked for")
+	// Six senders share 30. orders-oncology is the smallest, and its messages are the oldest in the window.
+	do $$$AssertEquals($get(seen("orders-oncology")),5,"the smallest moved feed still has its share")
+	do $$$AssertEquals($get(seen("annex-7")),5,"annex-7 has its share")
 }
 
 Method TestFixedTransformKeepsTheField()

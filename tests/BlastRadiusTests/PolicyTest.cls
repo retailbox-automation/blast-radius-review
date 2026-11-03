@@ -28,13 +28,22 @@ Method TestEvidenceToolsAreAllowed()
 /// Every tool the class offers has to be either allowed or refused on purpose, so a new tool cannot slip through unnoticed.
 Method TestEveryToolIsAccountedFor()
 {
-	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT Name FROM %Dictionary.CompiledMethod WHERE parent='BlastRadius.Agent.Tools' AND ClassMethod=1 AND Origin='BlastRadius.Agent.Tools' AND Name NOT IN ('Keep','CollectEvidence')")
+	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT Name FROM %Dictionary.CompiledMethod WHERE parent='BlastRadius.Agent.Tools' AND ClassMethod=1 AND Origin='BlastRadius.Agent.Tools'")
 	set p=##class(BlastRadius.Agent.Auth).%New()
 	while rs.%Next() {
 		set sc=p.%CanExecute(rs.Name,{"name":(rs.Name)},{})
 		if rs.Name="ApplyChange" { do $$$AssertTrue($$$ISERR(sc),"ApplyChange stays refused") }
 		else { do $$$AssertStatusOK(sc,rs.Name_" is allowed") }
 	}
+}
+
+/// Everything the model can see is deliberate. On 3 November a helper class method here was offered as a tool, and a model called it.
+Method TestNoHelperIsOfferedAsATool()
+{
+	set offered=##class(BlastRadius.Agent.Tools).%New().%Discover().%ToJSON()
+	do $$$AssertTrue(offered["TrafficLinks","control: the discovery lists a real tool")
+	do $$$AssertTrue(offered'["CollectEvidence")
+	do $$$AssertTrue(offered'["Keep")
 }
 
 Method TestDenialIsWrittenToTheAuditTable()

@@ -43,7 +43,7 @@ XData ProductionDefinition
     <Setting Target="Host" Name="BusinessPartner">Clinical Research</Setting>
   </Item>
 
-  <!-- The weekly batch. No setting names its target: the class hard-codes it, so the production diagram draws no line. -->
+  <!-- The weekly batch. Its target comes from a lookup table at run time, so neither the diagram nor Interface Maps can show it. -->
   <Item Name="annex-7" Category="Orders" ClassName="DemoHospital.Feed.Annex7Batch" PoolSize="0" Enabled="true" Comment="Annex 7 standing orders">
     <Setting Target="Host" Name="BusinessPartner">Annex 7 Clinic</Setting>
   </Item>

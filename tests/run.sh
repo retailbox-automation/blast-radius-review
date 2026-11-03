@@ -9,5 +9,5 @@ do ##class(BlastRadiusTests.Runner).Go("$CLASSES")
 halt
 EOS
 )
-echo "$OUT" | grep -E '^(FAILED|RESULT|Could not)'
-echo "$OUT" | grep -q '^RESULT passed=[1-9][0-9]* failed=0$'
+echo "$OUT" | grep -E 'FAILED B|RESULT|Could not'
+echo "$OUT" | grep -q 'RESULT passed=[1-9][0-9]* failed=0'
