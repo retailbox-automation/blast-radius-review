@@ -73,6 +73,8 @@ docker tag docker.iscinternal.com/docker-intersystems/intersystems/irishealth-co
            irishealth-community:2027.1.0AI.109.0
 ```
 
+`docker image load` prints the name it loaded. If yours differs, use that name in the tag command. I tested on ARM only; the x64 file name above comes from the portal.
+
 **3. Start it.**
 
 ```bash
@@ -118,7 +120,7 @@ A synthetic hospital. All names and identifiers are invented, and there is no pa
 | `LAB-NEW.Router`, `LAB-NEW.Out` | The new lab route |
 | `adt-feed`, `ADT.Router`, `bed-board.Out`, `billing.Out`, `nightly-report.Out` | Neighbours, so the agent has to find the right items in a real list |
 
-The transforms tell a small story. `OrderToLabNew` was written for the five feeds that send one order per message, and it only keeps the ordering provider on the first order. Nobody noticed. `annex-7` sends multi-order messages, so moving it would have lost `ORC-12` on three of them. The agent connects the two findings because the shadow-run reports which senders each difference came from. `OrderToLabNewV2` is the candidate that keeps the field.
+`OrderToLabNew` was written for the five feeds that send one order per message, and it only keeps the ordering provider on the first order. Nobody noticed. `annex-7` sends multi-order messages, so moving it would have lost `ORC-12` on three of them. The agent connects the two findings because the shadow-run reports which senders each difference came from. `OrderToLabNewV2` is the candidate that keeps the field.
 
 ## What is new here
 
@@ -126,7 +128,7 @@ The portal already knows a lot. *Interface Maps* and the production diagram read
 
 This adds what they cannot know:
 
-- **Traffic.** `Ens.MessageHeader` shows who actually sent what, last week. A target computed at run time from a lookup, a variable or `@context.x` in BPL appears nowhere else.
+- **Traffic.** `Ens.MessageHeader` shows who sent what, last week. A target computed at run time from a lookup, a variable or `@context.x` in BPL appears nowhere else.
 - **A trial on real history.** The current and candidate transforms run over stored message bodies, and the two outputs are compared field by field. Nothing is saved or sent.
 - **A decision with reasons, and people.** The agent reads a sentence, works out which items it means, and judges whether each difference was meant to happen. Owners get a task and their answer feeds the next review.
 
@@ -134,7 +136,7 @@ This adds what they cannot know:
 
 The model is good at two things here: mapping words to production items, and judging whether a difference in a field was intended given what the request says. It is not trusted with the rest.
 
-`BlastRadius.Gate.Floor` reads what the tools actually returned, not the agent's account of them, and works out the softest verdict the evidence allows. The agent can be stricter than that floor. It can never be softer.
+`BlastRadius.Gate.Floor` reads what the tools returned, not the agent's account of them, and works out the softest verdict the evidence allows. The agent can be stricter than that floor. It can never be softer.
 
 | Rule | Floor |
 |---|---|
@@ -183,7 +185,7 @@ The evidence tools read whichever production is running in the namespace, so not
 
 ## Install with IPM
 
-The package needs IRIS for Health 2026.3 or later with AI Hub, and a namespace with Interoperability enabled. The AI Hub image has no package manager, so install it first:
+The package needs IRIS for Health with AI Hub and a namespace with Interoperability enabled. I tested it on build 2027.1.0AI.109.0. The AI Hub image has no package manager, so install it first:
 
 ```objectscript
 zn "%SYS"
@@ -208,7 +210,7 @@ Use a test instance. This is a demo, so its web applications ask for no password
 |---|---|---|---|---|
 | `gemma4:31b` | Local, through Ollama on a Mac Studio | 22,383 prompt + 4,043 completion tokens, 14 tool calls | about 1.5 minutes | $0 |
 
-The time is not a promise. On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit AI Hub's default limit of 300 seconds, which is why the limit is a setting here.
+On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit AI Hub's default limit of 300 seconds, which is why the limit is a setting here.
 
 The screen shows tokens and tool calls for each review, and the cost when it knows the price. It never guesses a price: set `BR_PRICE_IN` and `BR_PRICE_OUT` for a hosted model. Every tool call is one row in `BlastRadius_Data.AuditEvent` and one message in Visual Trace, so you can see what the agent did, in what order, and what it was refused.
 
@@ -221,8 +223,8 @@ Things I ran into on build 109, in case they save you time:
 - **`EnsLib.AI.Agent.OutboundAdapter` works and has no documentation.** Its source in the image is the reference. `AgentClass`, `AuthPolicy` and `AuditPolicy` are production settings, and `OnBeforeAgentInit` is a good place to choose a provider from the environment.
 - **Every class method of a `%AI.Tool` class is offered to the model.** A helper of mine showed up as a tool and a model called it. Only the allow list stopped it. Helpers belong in another class, and `tests` checks that with `%Discover()`.
 - **`%SQL.Statement.%ExecDirect` does not throw on a bad statement.** `%Next()` returns 0, which an agent tool reads as "no rows", or here, "nobody uses this". All SQL here goes through `BlastRadius.Evidence.Sql`, which throws.
-- **A run stops after 300 seconds unless you say otherwise.** The error is `<%AICore>Timeout: Wall-clock timeout (300000 ms) exceeded before a final response`. `timeout_ms` in the session config changes it, and `request_timeout_secs` under `http_config` in the provider config limits one model request. `BlastRadius.Agent.Adapter` sets both from `BR_LLM_TIMEOUT_S`. A failed run still left a recording here until `Recorder.Finished()` stopped that.
-- **AI Hub stops a model that keeps getting the same tool result:** `<%AICore>LoopDetected: Agentic loop stalled: no new evidence from tool results after 4 assessment(s)`. I saw this with a fake provider that repeated one call. A real agent that polls a tool would hit it too.
+- **A run stops after 300 seconds unless you say otherwise.** The error is `<%AICore>Timeout: Wall-clock timeout (300000 ms) exceeded before a final response`. `timeout_ms` in the session config changes it, and `request_timeout_secs` under `http_config` in the provider config limits one model request. `BlastRadius.Agent.Adapter` sets both from `BR_LLM_TIMEOUT_S`.
+- **AI Hub stops a model that keeps getting the same tool result:** `<%AICore>LoopDetected: Agentic loop stalled: no new evidence from tool results after 4 assessment(s)`. I saw this with a fake provider that repeated one call.
 - **A production cannot start from an IPM `Invoke`.** `Ens.Director.StartProduction` failed with `ErrCanNotAcquireRuntimeLock` after 30 seconds, and what the method had already set was rolled back, so the package manager runs it inside a transaction. `BlastRadius.Install.AtIpmInstall` leaves the start to a background job that waits for the transaction to end.
 - **`call.arguments` is a JSON string in audit hooks and an object in authorization hooks** (known, bug report 14, still so on 109).
 
