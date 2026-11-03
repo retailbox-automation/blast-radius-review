@@ -32,7 +32,7 @@ ClassMethod OnContainerStart() As %Status
 			$$$ThrowOnError(##class(Ens.Director).StartProduction(..#PRODUCTION))
 		}
 		if $get(^BlastRadius.Seed("done"))="" {
-			write "Seeding 30 days of synthetic traffic, about a minute...",!
+			write "Seeding 30 days of synthetic traffic, about ten seconds...",!
 			$$$ThrowOnError(##class(DemoHospital.Seed).Run())
 		}
 		write "Blast Radius Review is ready: http://localhost:52773/blastradius/ui/index.html",!

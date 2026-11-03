@@ -148,7 +148,11 @@ ClassMethod PulseFor(pEvidence As %DynamicObject) As %DynamicObject
 		}
 	}
 	quit:best="" ""
-	quit {"sender":(best),"item":(bestItem),"pattern":(bestPattern),"window_days":30,"days":(##class(BlastRadius.Evidence.Traffic).Pulse(best,bestItem))}
+	set days=##class(BlastRadius.Evidence.Traffic).Pulse(best,bestItem)
+	set list="", it=days.%GetIterator()
+	while it.%GetNext(.k,.d) { set list=list_$select(list="":"",1:",")_d."days_ago" }
+	set rhythm={}.%FromJSON(##class(BlastRadius.Evidence.Rhythm).NextExpected(list))
+	quit {"sender":(best),"item":(bestItem),"pattern":(bestPattern),"window_days":30,"days":(days),"rhythm":(rhythm)}
 }
 
 ClassMethod Audit(pCRId As %String) As %DynamicArray

@@ -4,13 +4,17 @@ Before anyone changes a live IRIS integration, an AI Hub agent finds everything 
 
 Built for the InterSystems programming contest *AI Agents in Interoperability Workflows*. Runs on **AI Hub Community build 2027.1.0AI.109.0, IRIS for Health**.
 
-```
-"Retire LAB-OLD; everything moved to LAB-NEW last month."
+![The decision screen: HOLD, with annex-7 in red close to LAB-OLD.Router, and ORC-12 lost in 3 of 120 stored messages](docs/images/decision-hold.png)
 
+An engineer writes "Retire LAB-OLD; everything moved to LAB-NEW last month." Everything had moved, except `annex-7`:
+
+```
 HOLD
 annex-7 sends to LAB-OLD.Router (41 messages in 30 days, Tuesdays 06:00), and nothing declares that link.
 Shadow-run: 3 of 120 stored messages lose field ORC-12, and nothing says that is intended.
 ```
+
+Its target is read from a Lookup Table at run time, so neither the production diagram nor Interface Maps can show it. The message headers can.
 
 ## Why this exists
 
@@ -39,6 +43,8 @@ BlastRadius.Review           BPL process
 ```
 
 The decision has four outcomes: **APPLY**, **APPLY-AFTER-DRAIN**, **CANARY-FIRST**, **HOLD**. The whole review is one session, so you can follow it in Visual Trace like any other message flow, tool calls included.
+
+![Visual Trace of one review: the change request, the review request, then one message per agent tool call](docs/images/visual-trace.png)
 
 ## Check it yourself
 
@@ -85,9 +91,13 @@ curl -s http://localhost:52773/blastradius/api/health
 
 Pick **Retire the old lab**. You should see HOLD within a second or two. Portal login, wherever it asks: `_SYSTEM` / `SYS`.
 
-**5. Answer the owners.** The card shows two tasks. Press **Confirm** on both, here or in the Workflow inbox. The process carries on by itself and the second review ends at **APPLY-AFTER-DRAIN**, because 4 messages are still queued on `LAB-OLD.Out`. Press **Reject** on the first one instead and it stays at HOLD.
+**5. Answer the owners.** The screen shows two tasks. Press **Confirm** on both, here or in the [Workflow inbox](http://localhost:52773/csp/healthshare/blastradius/_DeepSee.UserPortal.Workflow.zen). The process carries on by itself and the second review ends at **APPLY-AFTER-DRAIN**, because 4 messages are still queued on `LAB-OLD.Out`. Press **Reject** on one instead and it stays at HOLD.
 
-**6. Look at it from the IRIS side.** The card links to Visual Trace for the session. Message Viewer shows the change request as an ordinary message. The production diagram shows the review items in the `BlastRadius` category next to the hospital's.
+![The same review after both owners confirmed: APPLY-AFTER-DRAIN, 4 queued](docs/images/decision-after-drain.png)
+
+**6. Look at it from the IRIS side.** Scroll down the decision screen: the gate's reasons, every sender, every field difference, each tool call, and links to Visual Trace for the session, Message Viewer and the production. The tasks are ordinary Workflow tasks, and the review items sit in the production next to the hospital's, under the `BlastRadius` category.
+
+![Workflow inbox with the two owner tasks](docs/images/workflow-inbox.png)
 
 **7. Run the tests.**
 
@@ -170,6 +180,25 @@ The evidence tools read whichever production is running in the namespace, so not
 1. Load `src/BlastRadius` into your namespace.
 2. Add the `BlastRadius.*` items and at least one `EnsLib.Workflow.Operation` to your production, with the category `BlastRadius` so they are left out of the review.
 3. Fill the `BlastRadiusOwners` lookup: Business Partner name to Workflow role.
+
+## Models and cost
+
+| Model | Where | One review, first round | Time | Cost |
+|---|---|---|---|---|
+| `gemma4:31b` | Local, through Ollama on a Mac Studio | 22,383 prompt + 4,043 completion tokens, 14 tool calls | about 1.5 minutes | $0 |
+
+The screen shows tokens and tool calls for each review, and the cost when it knows the price. It never guesses a price: set `BR_PRICE_IN` and `BR_PRICE_OUT` for a hosted model. Every tool call is one row in `BlastRadius_Data.AuditEvent` and one message in Visual Trace, so you can see what the agent did, in what order, and what it was refused.
+
+## Platform findings
+
+Things I ran into on build 109, in case they save you time:
+
+- **The plain `iris-community` image has no HL7.** `SELECT Name FROM %Dictionary.CompiledClass WHERE Name %STARTSWITH 'EnsLib.HL7'` returns nothing. HL7 work needs `irishealth-community`.
+- **Embedded Python in a tool can crash the process.** When a model asks for several tool calls in one response and a tool reaches a `[ Language = python ]` method, the job can die with signal 11, with no error to catch, and its message stays queued. I reproduced it without my code or a key. This is why the field diff here is ObjectScript, and why the one Python method in this project (`BlastRadius.Evidence.Rhythm`, which predicts a sender's next run) is called from the REST API and not from a tool.
+- **`EnsLib.AI.Agent.OutboundAdapter` works and has no documentation.** Its source in the image is the reference. `AgentClass`, `AuthPolicy` and `AuditPolicy` are production settings, and `OnBeforeAgentInit` is a good place to choose a provider from the environment.
+- **Every class method of a `%AI.Tool` class is offered to the model.** A helper of mine showed up as a tool and a model called it. Only the allow list stopped it. Helpers belong in another class, and `tests` checks that with `%Discover()`.
+- **`%SQL.Statement.%ExecDirect` does not throw on a bad statement.** `%Next()` returns 0, which an agent tool reads as "no rows", or here, "nobody uses this". All SQL here goes through `BlastRadius.Evidence.Sql`, which throws.
+- **`call.arguments` is a JSON string in audit hooks and an object in authorization hooks** (known, bug report 14, still so on 109).
 
 ## Limitations
 

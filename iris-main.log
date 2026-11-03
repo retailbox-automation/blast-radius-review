@@ -175,3 +175,42 @@ Blast Radius Review is ready: http://localhost:52773/blastradius/ui/index.html
 BLASTRADIUS>
 
 16:21:20 2026-11-03 [INFO] ...executed command /home/irisowner/dev/start.sh
+16:46:34 2026-11-03 [INFO] Shutting down InterSystems IRIS instance IRIS...
+17:00:13 2026-11-03 [INFO] Writing status to file: /home/irisowner/irissys/iscagent.status
+Reading configuration from file: /home/irisowner/irissys/iscagent.conf
+ISCAgent[20]: Starting
+ISCAgent[21]: Starting ApplicationServer on *:2188
+
+17:00:13 2026-11-03 [INFO] Starting InterSystems IRIS instance IRIS...
+17:00:15 2026-11-03 [INFO] Starting Control Process
+Global buffer setting requires attention.  Auto-selected 25% of total memory.
+Allocated 2705MB shared memory
+1982MB global buffers, 198MB routine buffers
+This copy of InterSystems IRIS has been licensed for use exclusively by:
+InterSystems IRIS Community
+Copyright (c) 1986-2026 by InterSystems Corporation
+Any other use is a violation of your license agreement
+
+2 alert(s) during startup. See messages.log for details.
+Starting IRIS
+
+
+17:00:15 2026-11-03 [INFO] ...started InterSystems IRIS instance IRIS
+17:00:15 2026-11-03 [INFO] Executing command /home/irisowner/dev/start.sh...
+17:00:22 2026-11-03 [INFO] 
+Node: 09e6196ee651, Instance: IRIS
+
+BLASTRADIUS>
+Seeding 30 days of synthetic traffic, about ten seconds...
+
+17:00:15.669:Ens.Director: Production 'DemoHospital.Production' updating... (UpdateTimeout: 10s, Force flag: 0)
+17:00:15.678:Ens.Director: Production 'DemoHospital.Production' updated.
+17:00:19.641:Ens.Director: Production 'DemoHospital.Production' updating... (UpdateTimeout: 10s, Force flag: 0)
+17:00:19.647:Ens.Director: ConfigItem 'LAB-OLD.Out' (DemoHospital.Lab.SinkOperation) stopped in job 713
+17:00:19.647:Ens.Director: Production 'DemoHospital.Production' updated.seeded 1417 sessions in 7.0s
+Blast Radius Review is ready: http://localhost:52773/blastradius/ui/index.html
+
+BLASTRADIUS>
+
+17:00:22 2026-11-03 [INFO] ...executed command /home/irisowner/dev/start.sh
+17:02:10 2026-11-03 [INFO] Shutting down InterSystems IRIS instance IRIS...

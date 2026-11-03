@@ -394,7 +394,9 @@ function renderTables(card, t) {
 }
 
 function renderMore(card) {
-  $('summary').textContent = card.summary || '';
+  const r = card.pulse && card.pulse.rhythm;
+  const next = r && r.regular ? ` Next from ${card.pulse.sender}: ${r.next_in_days <= 0 ? 'due today' : r.next_in_days === 1 ? 'tomorrow' : 'in ' + r.next_in_days + ' days'}, going by its ${r.every_days}-day rhythm.` : '';
+  $('summary').textContent = (card.summary || '') + next;
   $('reasons').innerHTML = (card.gate_reasons || []).map(r => `<li>${esc(r)}</li>`).join('');
   const l = card.links || {};
   $('links').innerHTML = [['Visual Trace', l.visual_trace], ['Message Viewer', l.message_viewer], ['Workflow inbox', l.workflow_inbox], ['Production', l.production]]

@@ -91,6 +91,25 @@ Method TestPulseIsTheRealTuesdays()
 	do $$$AssertEquals(total,41)
 }
 
+/// The seed's last batch was on the last Tuesday, so the next one is seven days after that.
+Method TestRhythmPredictsTheNextBatch()
+{
+	set r={}.%FromJSON(##class(BlastRadius.Evidence.Rhythm).NextExpected("28,21,14,7"))
+	do $$$AssertEquals(r.regular,1)
+	do $$$AssertEquals(r."every_days",7)
+	do $$$AssertEquals(r."next_in_days",0)
+	set r={}.%FromJSON(##class(BlastRadius.Evidence.Rhythm).NextExpected("26,19,12,5"))
+	do $$$AssertEquals(r."next_in_days",2)
+}
+
+/// Control: an irregular or daily sender must not get a prediction.
+Method TestRhythmRefusesToGuess()
+{
+	do $$$AssertEquals({}.%FromJSON(##class(BlastRadius.Evidence.Rhythm).NextExpected("28,21,10")).regular,0,"uneven gaps")
+	do $$$AssertEquals({}.%FromJSON(##class(BlastRadius.Evidence.Rhythm).NextExpected("3,2,1")).regular,0,"daily")
+	do $$$AssertEquals({}.%FromJSON(##class(BlastRadius.Evidence.Rhythm).NextExpected("7,14")).regular,0,"too few points")
+}
+
 Method TestOwnerAnswerKeysComeFromTheSubject()
 {
 	do $$$AssertEquals(##class(BlastRadius.Process.Answers).KeyFromSubject("CR-0142: confirm annex-7"),"sender:annex-7")
