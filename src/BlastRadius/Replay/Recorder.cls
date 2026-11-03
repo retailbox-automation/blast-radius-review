@@ -4,7 +4,10 @@ Include Ensemble
 Class BlastRadius.Replay.Recorder Extends %RegisteredObject
 {
 
-Parameter DIR = "/home/irisowner/dev/replay/";
+ClassMethod Dir() As %String
+{
+	quit ##class(BlastRadius.Install).Home()_"replay/"
+}
 
 /// A recording is found by the request text, the round, and what the owners decided. Comments do not change the key.
 ClassMethod Key(pText As %String, pRound As %Integer, pAnswers As %String = "") As %String
@@ -30,7 +33,7 @@ ClassMethod KeyFromPrompt(pPrompt As %String) As %String
 
 ClassMethod Load(pKey As %String) As %DynamicObject
 {
-	set file=..#DIR_pKey_".json"
+	set file=..Dir()_pKey_".json"
 	quit:'##class(%File).Exists(file) ""
 	set s=##class(%Stream.FileCharacter).%New()
 	set s.TranslateTable="UTF8"
@@ -81,7 +84,7 @@ ClassMethod MaybeRecord(pRequest As BlastRadius.Msg.ReviewRequest, pSession As %
 		set rec={"request":(pRequest.Text),"round":(pRequest.Round),"owner_answers":(pRequest.OwnerAnswers),"model":(pResponse.Model),"recorded_at":($zdatetime($ztimestamp,3)),"total_prompt_tokens":(stats."total_prompt_tokens"),"total_completion_tokens":(stats."total_completion_tokens"),"verdict":(pResponse.AgentVerdict),"steps":(steps)}
 		set s=##class(%Stream.FileCharacter).%New()
 		set s.TranslateTable="UTF8"
-		$$$ThrowOnError(s.LinkToFile(..#DIR_key_".json"))
+		$$$ThrowOnError(s.LinkToFile(..Dir()_key_".json"))
 		set formatter=##class(%JSON.Formatter).%New()
 		do formatter.FormatToString(rec,.pretty)
 		do s.Write(pretty)

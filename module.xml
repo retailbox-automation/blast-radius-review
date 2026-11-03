@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+  <Document name="blast-radius-review.ZPM">
+    <Module>
+      <Name>blast-radius-review</Name>
+      <Version>1.0.0</Version>
+      <Description>An AI Hub agent reviews changes to a running interoperability production. It compares what the production declares with its message traffic, replays stored messages through the old and new transforms, and code holds the verdict to what the evidence allows.</Description>
+      <Keywords>ai-hub,interoperability,hl7,agent,workflow</Keywords>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <Resource Name="BlastRadius.PKG"/>
+      <Resource Name="DemoHospital.PKG"/>
+      <FileCopy Name="ui/" Target="${mgrdir}blast-radius-review/ui/"/>
+      <FileCopy Name="replay/" Target="${mgrdir}blast-radius-review/replay/"/>
+      <Invoke Class="BlastRadius.Install" Method="AtIpmInstall" Phase="Activate" When="After">
+        <Arg>${mgrdir}blast-radius-review/</Arg>
+      </Invoke>
+      <SystemRequirements Version=">=2026.3" Interoperability="enabled" Health="true"/>
+    </Module>
+  </Document>
+</Export>

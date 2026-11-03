@@ -46,6 +46,17 @@ Method TestNoHelperIsOfferedAsATool()
 	do $$$AssertTrue(offered'["Keep")
 }
 
+/// Recordings are found wherever the package was installed.
+Method TestRecordingsFollowTheInstallFolder()
+{
+	set saved=$get(^BlastRadius.Home)
+	kill ^BlastRadius.Home
+	do $$$AssertEquals(##class(BlastRadius.Replay.Recorder).Dir(),"/home/irisowner/dev/replay/","container default")
+	set ^BlastRadius.Home="/somewhere/else/"
+	do $$$AssertEquals(##class(BlastRadius.Replay.Recorder).Dir(),"/somewhere/else/replay/","installed by IPM")
+	if saved="" { kill ^BlastRadius.Home } else { set ^BlastRadius.Home=saved }
+}
+
 /// A review that timed out or never decided must not replace a good recording.
 Method TestUnfinishedRunIsNotRecorded()
 {

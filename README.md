@@ -181,6 +181,27 @@ The evidence tools read whichever production is running in the namespace, so not
 2. Add the `BlastRadius.*` items and at least one `EnsLib.Workflow.Operation` to your production, with the category `BlastRadius` so they are left out of the review.
 3. Fill the `BlastRadiusOwners` lookup: Business Partner name to Workflow role.
 
+## Install with IPM
+
+The package needs IRIS for Health 2026.3 or later with AI Hub, and a namespace with Interoperability enabled. The AI Hub image has no package manager, so install it first:
+
+```objectscript
+zn "%SYS"
+set r=##class(%Net.HttpRequest).%New(),r.Server="pm.community.intersystems.com",r.Https=1,r.SSLConfiguration="ISC.FeatureTracker.SSL.Config"
+do r.Get("/packages/zpm/latest/installer"),$system.OBJ.LoadStream(r.HttpResponse.Data,"c")
+zpm "enable -map -globally"
+```
+
+Then, in your namespace:
+
+```objectscript
+zpm "install blast-radius-review"
+```
+
+A clone works too: `zpm "load /path/to/blast-radius-review"`. The package starts the demo production and seeds it in the background, and the screen is ready about ten seconds after the command returns, at `/blastradius/ui/index.html`. `tools/ipm_test.sh` does all of this in a throwaway container.
+
+Use a test instance. This is a demo, so its web applications ask for no password, and replay expects the web server on port 52773.
+
 ## Models and cost
 
 | Model | Where | One review, first round | Time | Cost |
@@ -202,6 +223,7 @@ Things I ran into on build 109, in case they save you time:
 - **`%SQL.Statement.%ExecDirect` does not throw on a bad statement.** `%Next()` returns 0, which an agent tool reads as "no rows", or here, "nobody uses this". All SQL here goes through `BlastRadius.Evidence.Sql`, which throws.
 - **A run stops after 300 seconds unless you say otherwise.** The error is `<%AICore>Timeout: Wall-clock timeout (300000 ms) exceeded before a final response`. `timeout_ms` in the session config changes it, and `request_timeout_secs` under `http_config` in the provider config limits one model request. `BlastRadius.Agent.Adapter` sets both from `BR_LLM_TIMEOUT_S`. A failed run still left a recording here until `Recorder.Finished()` stopped that.
 - **AI Hub stops a model that keeps getting the same tool result:** `<%AICore>LoopDetected: Agentic loop stalled: no new evidence from tool results after 4 assessment(s)`. I saw this with a fake provider that repeated one call. A real agent that polls a tool would hit it too.
+- **A production cannot start from an IPM `Invoke`.** `Ens.Director.StartProduction` failed with `ErrCanNotAcquireRuntimeLock` after 30 seconds, and what the method had already set was rolled back, so the package manager runs it inside a transaction. `BlastRadius.Install.AtIpmInstall` leaves the start to a background job that waits for the transaction to end.
 - **`call.arguments` is a JSON string in audit hooks and an object in authorization hooks** (known, bug report 14, still so on 109).
 
 ## Limitations

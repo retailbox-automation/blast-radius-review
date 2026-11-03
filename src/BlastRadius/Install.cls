@@ -6,6 +6,32 @@ Parameter NS = "BLASTRADIUS";
 
 Parameter PRODUCTION = "DemoHospital.Production";
 
+/// Where the screen and the recordings live: the project folder in the container, or the folder IPM copied them to.
+ClassMethod Home() As %String
+{
+	quit $get(^BlastRadius.Home,"/home/irisowner/dev/")
+}
+
+/// Called by the package manager after it has compiled the package. See module.xml.
+/// It installs inside a transaction, and a production cannot start inside one: its jobs wait on locks the transaction still holds.
+/// A released lock stays held until the transaction ends, so a background job can wait on it and then start the production.
+ClassMethod AtIpmInstall(pHome As %String) As %Status
+{
+	set ^BlastRadius.Home=##class(%File).NormalizeDirectory(pHome)
+	$$$QuitOnError(..AtBuild())
+	lock +^BlastRadius.IpmInstall
+	job ##class(BlastRadius.Install).StartAfterIpmInstall()
+	lock -^BlastRadius.IpmInstall
+	quit $$$OK
+}
+
+ClassMethod StartAfterIpmInstall()
+{
+	lock +^BlastRadius.IpmInstall:600
+	lock -^BlastRadius.IpmInstall
+	set ^BlastRadius.IpmInstall("status")=$system.Status.GetOneErrorText(..OnContainerStart())
+}
+
 /// Called from iris.script during docker build.
 ClassMethod AtBuild() As %Status
 {
@@ -45,7 +71,7 @@ ClassMethod OnContainerStart() As %Status
 
 ClassMethod WebApps() As %Status
 {
-	set ns=$namespace
+	set ns=$namespace, ui=..Home()_"ui"
 	set sc=$$$OK
 	try {
 		zn "%SYS"
@@ -61,7 +87,7 @@ ClassMethod WebApps() As %Status
 		if '##class(Security.Applications).Exists(name) {
 			kill p
 			set p("NameSpace")=ns, p("Enabled")=1, p("AutheEnabled")=64, p("MatchRoles")=":%All", p("Type")=2
-			set p("Path")="/home/irisowner/dev/ui", p("ServeFiles")=1, p("CSPZENEnabled")=1
+			set p("Path")=ui, p("ServeFiles")=1, p("CSPZENEnabled")=1
 			$$$ThrowOnError(##class(Security.Applications).Create(name,.p))
 		}
 	} catch ex { set sc=ex.AsStatus() }
