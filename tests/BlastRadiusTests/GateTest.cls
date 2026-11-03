@@ -163,6 +163,14 @@ Method TestGateRunsTheChecksTheAgentSkipped()
 	do $$$AssertEquals(r.verdict,"APPLY-AFTER-DRAIN","and the 4 queued messages count against the agent's APPLY")
 }
 
+/// The shadow-run on the old route covers the move: naming the replacement router must not raise a second hold.
+Method TestReplacementRouterNeedsNoSecondShadowRun()
+{
+	set e={"traffic":[{"item":"LAB-OLD.Router","window_days":30,"senders_seen":[{"sender":"x","messages":1,"pattern":"p"}],"active_senders_not_in_configuration":[]},{"item":"LAB-NEW.Router","window_days":30,"senders_seen":[{"sender":"y","messages":1,"pattern":"p"}],"active_senders_not_in_configuration":[]}],"queue":[{"item":"LAB-OLD.Router","queued":0},{"item":"LAB-NEW.Router","queued":0}],"shadow":[{"item":"LAB-OLD.Router","candidate":"c","messages_processed":10,"messages_failed":0,"field_differences":[]}]}
+	set r=##class(BlastRadius.Gate.Floor).Decide(e,{"verdict":"APPLY","items":["LAB-OLD.Router","LAB-NEW.Router"]},"Retire LAB-OLD.Router")
+	do $$$AssertEquals(r.verdict,"APPLY")
+}
+
 Method TestNoItemsHolds()
 {
 	set r=##class(BlastRadius.Gate.Floor).Decide({},{"verdict":"APPLY","items":[]},"anything")

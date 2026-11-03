@@ -1,4 +1,483 @@
-<!doctype html>
-<meta charset="utf-8">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1440">
 <title>Blast Radius Review</title>
-<p>The decision card comes here. Until then, use the API: <a href="/blastradius/api/change-requests">/blastradius/api/change-requests</a></p>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* Colors picked from D-screen.png with PIL (median of the element's pixels). */
+  :root {
+    --page: #fdfdfd;
+    --card: #fefefe;
+    --ink: #0a111c;
+    --red: #d9030c;
+    --blue: #0167f7;
+    --blue-line: #2a78f6;
+    --card-line: #babdc1;
+    --sub-line: #d2d4d8;
+    --sep: #c6c9cd;
+    --sep2: #d0d3d6;
+    --band: #eaeaec;
+    --band-line: #c6c9cd;
+    --band-line2: #d3d5d8;
+    --track: #85888c;
+    --ring: #b9bcc0;
+    --gone-edge: #cfd3d8;
+    --gone-node: #b3b5b8;
+    --gone-rim: #9a9da1;
+    --gone-text: #6b7280;
+    --pulse-base: #a7aaae;
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; width: 1440px; background: var(--page); }
+  body { font-family: var(--font); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  button { font-family: inherit; }
+
+  .screen { width: 1440px; height: 826px; padding: 0 11px 15px 12px; display: flex; flex-direction: column; }
+
+  /* ── top bar ─────────────────────────────────────────── */
+  .topbar { flex: none; height: 66px; display: flex; align-items: flex-start; }
+  .brand { margin: 0; padding-left: 22.5px; font-size: 40.3px; font-weight: 900; line-height: 68px; height: 66px; white-space: nowrap; letter-spacing: -0.42px; }
+
+  /* ── grids ───────────────────────────────────────────── */
+  .row-top { flex: none; display: grid; grid-template-columns: 815px 588px; column-gap: 14px; height: 506px; }
+  .row-bottom { flex: none; display: grid; grid-template-columns: 732px 669px; column-gap: 16px; height: 224px; margin-top: 15px; }
+  .card { position: relative; border: 2px solid var(--card-line); border-radius: 10px; background: var(--card); }
+
+  /* ── radial map card ─────────────────────────────────── */
+  .card-map { display: flex; flex-direction: column; }
+  .radial { display: block; flex: none; width: 811px; height: 453px; overflow: visible; }
+  .radial text { font-family: var(--font); font-weight: 800; font-size: 20.4px; letter-spacing: -0.2px; text-anchor: middle;
+                 paint-order: stroke; stroke: var(--card); stroke-width: 7px; stroke-linejoin: round; }
+  .radial .ring { fill: none; stroke: var(--ring); stroke-width: 1.6px; }
+  .radial .node-count { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+  .radial .edge { fill: none; }
+  .radial .feed--gone .edge { stroke: var(--gone-edge); stroke-width: 1.1px; }
+  .radial .feed--gone .node { fill: var(--gone-node); stroke: var(--gone-rim); stroke-width: 1.5px; filter: drop-shadow(0 1.5px 1.5px rgba(0,0,0,.18)); }
+  .radial .feed--gone text { fill: var(--gone-text); }
+  .radial .feed--alert .edge { stroke: var(--red); stroke-width: 2.6px; stroke-dasharray: 9 3; }
+  .radial .feed--alert .node { fill: var(--red); filter: drop-shadow(0 1px 2px rgba(217,3,12,.35)); }
+  .radial .feed--alert text { fill: var(--red); }
+  .radial .hub-shape { fill: #fff; stroke: var(--ink); stroke-width: 2.2px; }
+  .radial .hub-label { fill: var(--ink); font-size: 19.5px; letter-spacing: -0.18px; stroke: none; }
+
+  .pulse { flex: none; position: relative; height: 49px; margin: 0 15px; border-top: 2px solid var(--sep2); display: flex; align-items: flex-start; }
+  .pulse-label { flex: none; width: 167px; padding-left: 2.6px; font-size: 18.3px; font-weight: 800; letter-spacing: -0.25px; line-height: 48px; color: var(--red); white-space: nowrap; }
+  .pulse-track { flex: none; display: block; width: 618px; height: 26px; margin-top: 7px; overflow: visible; }
+  .pulse-track .pulse-base { stroke: var(--pulse-base); stroke-width: 1.6px; }
+  .pulse-track .tick { stroke: var(--red); stroke-width: 3px; }
+
+  /* ── verdict card ────────────────────────────────────── */
+  .card-verdict { display: flex; flex-direction: column; }
+  .verdict-word { flex: none; height: 142px; margin: 0; padding-left: 21px; text-align: center; font-size: 134px; font-weight: 900; line-height: 142px;
+                  color: var(--red); white-space: nowrap; letter-spacing: -0.6px; }
+  .verdict-scale { flex: none; position: relative; list-style: none; margin: 0 0 0 2px; padding: 0; height: 80px;
+                   display: grid; grid-template-columns: 150.25px 150.75px 152px 124px; }
+  .verdict-scale::before { content: ""; position: absolute; left: 75px; width: 440px; top: 20px; height: 2px; background: var(--track); }
+  .verdict-step { position: relative; display: flex; flex-direction: column; align-items: center; }
+  .verdict-dot { display: block; width: 27px; height: 27px; margin-top: 7.5px; border-radius: 50%; border: 2px solid var(--track); background: #fff; }
+  .verdict-name { margin-top: 12px; font-size: 17.5px; font-weight: 800; line-height: 20px; white-space: nowrap; }
+  .verdict-step.is-active .verdict-dot { width: 29px; height: 29px; margin-top: 6.5px; border: 0; background: var(--red); }
+  .verdict-step.is-active .verdict-name { margin-top: 11px; color: var(--red); }
+
+  .divider { flex: none; height: 2px; margin: 10px 15px 0 19px; background: var(--sep2); }
+  .queued { flex: none; height: 59px; margin: 0; padding-left: 20.4px; font-size: 20.9px; font-weight: 800; letter-spacing: -0.17px; line-height: 59px; white-space: nowrap; }
+
+  .owners { flex: none; display: flex; flex-direction: column; row-gap: 14px; margin: 0 3px 0 4px; padding: 0; list-style: none; }
+  .owner { height: 74px; display: flex; align-items: center; border: 2px solid var(--sub-line); border-radius: 9px; background: var(--card); }
+  .owner-icon { flex: none; display: block; width: 28px; height: 30px; margin-left: 21px; }
+  .owner-sep { flex: none; width: 1px; height: 44px; margin-left: 18px; background: #acafb3; }
+  .owner-name { flex: 1 1 auto; min-width: 0; margin-left: 17px; font-size: 19.2px; font-weight: 800; letter-spacing: -0.17px; white-space: nowrap; }
+  .btn { flex: none; height: 47px; padding: 2px 0 0; border-radius: 8px; font-size: 16.9px; font-weight: 700; letter-spacing: -0.18px; line-height: 1; cursor: pointer; white-space: nowrap; }
+  .btn-confirm { width: 103px; border: 0; background: var(--blue); color: #fff; }
+  .btn-reject { width: 94px; margin: 0 7px 0 9px; border: 2px solid var(--blue-line); background: #fff; color: var(--blue); }
+
+  /* ── evidence tables ─────────────────────────────────── */
+  .card-table { display: flex; flex-direction: column; }
+  .card-title { flex: none; height: 48px; margin: 0; padding-left: 16.6px; font-size: 26.5px; font-weight: 800; letter-spacing: -0.14px; line-height: 48.7px; white-space: nowrap; }
+  .evidence { flex: none; width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+  .evidence th, .evidence td { padding: 0; text-align: left; vertical-align: top; white-space: nowrap; }
+  .evidence th { height: 42px; padding-top: 3px; font-size: 19.8px; font-weight: 800; letter-spacing: -0.26px; line-height: 35px; background: var(--band);
+                 border-top: 2px solid var(--band-line); border-bottom: 2px solid var(--band-line2); }
+  .evidence td { height: 43px; padding: 1px 0 1px; font-size: 20.9px; font-weight: 600; letter-spacing: -0.19px; line-height: 41px; }
+  .evidence .key, .evidence .is-finding td { font-size: 20.2px; font-weight: 800; letter-spacing: -0.3px; }
+  .evidence .is-finding td { color: var(--red); }
+  .evidence tbody tr:not(:last-child) { background: linear-gradient(var(--sep2), var(--sep2)) no-repeat; background-position: var(--sep-left) 100%; background-size: calc(100% - var(--sep-left) - var(--sep-right)) 2px; }
+  .evidence .empty { padding-left: 8px; }
+
+  .traffic { --sep-left: 11px; --sep-right: 12px; }
+  .traffic .c1 { width: 252.5px; } .traffic .c2 { width: 104px; } .traffic .c3 { width: 212.5px; } .traffic .c4 { width: 159px; }
+  .traffic th:first-child, .traffic td:first-child { padding-left: 27.5px; }
+  .shadow { --sep-left: 15px; --sep-right: 12px; }
+  .shadow .c1 { width: 224.5px; } .shadow .c2 { width: 257px; } .shadow .c3 { width: 183.5px; }
+  .shadow th:first-child, .shadow td:first-child { padding-left: 28.5px; }
+
+  /* ── live parts that the static picture did not need ── */
+  html, body { width: auto; }
+  body { width: 1440px; transform-origin: top left; }
+  .topbar { justify-content: space-between; column-gap: 24px; }
+  .request { flex: 1 1 auto; min-width: 0; height: 66px; display: flex; align-items: center; column-gap: 10px; padding-top: 2px; font-size: 16px; font-weight: 600; color: #3f4753; overflow: hidden; }
+  .request b { flex: none; color: var(--ink); font-weight: 800; }
+  .pick { flex: none; height: 66px; display: flex; align-items: center; column-gap: 8px; }
+  .pick select { height: 38px; max-width: 250px; padding: 0 8px; border: 2px solid var(--card-line); border-radius: 8px; background: #fff; font: 600 15px var(--font); color: var(--ink); }
+  .btn-run { width: 90px; height: 38px; font-size: 15px; }
+  .radial .feed--live .edge { stroke: var(--track); stroke-width: 2px; }
+  .radial .feed--live .node { fill: #4b5563; }
+  .radial .feed--live text { fill: var(--ink); }
+  .pulse-track.is-quiet .tick { stroke: var(--track); }
+  .verdict-word { display: flex; align-items: center; justify-content: center; padding-left: 0; }
+  .verdict-word[data-verdict="APPLY"] { color: #12803f; }
+  .verdict-word[data-verdict="APPLY-AFTER-DRAIN"], .verdict-word[data-verdict="CANARY-FIRST"] { color: #b45f06; }
+  .verdict-word[data-verdict="BUSY"] { color: #5b6472; font-weight: 700; }
+  .verdict-step[data-tone="APPLY"] .verdict-dot { background: #12803f; }
+  .verdict-step[data-tone="APPLY"] .verdict-name { color: #12803f; }
+  .verdict-step[data-tone="APPLY-AFTER-DRAIN"] .verdict-dot, .verdict-step[data-tone="CANARY-FIRST"] .verdict-dot { background: #b45f06; }
+  .verdict-step[data-tone="APPLY-AFTER-DRAIN"] .verdict-name, .verdict-step[data-tone="CANARY-FIRST"] .verdict-name { color: #b45f06; }
+  .owner-done { flex: none; margin-right: 18px; font-size: 16.9px; font-weight: 700; color: #12803f; }
+  .owner-done[data-action="Reject"] { color: var(--red); }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .gate-line { flex: none; margin: 12px 0 0; padding-left: 20.4px; font-size: 14px; font-weight: 600; color: #5b6472; white-space: nowrap; }
+  .evidence td { overflow: hidden; text-overflow: ellipsis; }
+  /* below the approved screen: the full record */
+  .more { width: 1440px; padding: 8px 23px 48px 24px; display: grid; grid-template-columns: 1fr 380px; column-gap: 28px; font-size: 15px; line-height: 1.45; }
+  .more h2 { margin: 22px 0 8px; font-size: 19px; font-weight: 800; }
+  .more p, .more ul, .more ol { margin: 0 0 10px; }
+  .more ul { padding-left: 20px; }
+  .links a { margin-right: 18px; color: var(--blue); font-weight: 600; }
+  .plain { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .plain th, .plain td { padding: 6px 10px 6px 0; text-align: left; border-bottom: 1px solid var(--sub-line); vertical-align: top; }
+  .plain th { font-weight: 800; }
+  .plain .is-finding td { color: var(--red); font-weight: 700; }
+  .plain code { font-size: 12.5px; }
+  .calls { list-style: none; padding: 0; }
+  .calls li { padding: 2px 0; font-size: 14.5px; }
+  .calls li span { display: inline-block; min-width: 18px; color: #12803f; font-weight: 800; }
+  .calls .is-denied, .calls .is-denied span { color: var(--red); font-weight: 700; }
+  .usage { color: #5b6472; font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="screen" id="screen">
+
+  <header class="topbar">
+    <h1 class="brand">Blast Radius Review</h1>
+    <div class="request" id="request"></div>
+    <div class="pick">
+      <select id="preset" aria-label="Pick a request"></select>
+      <button type="button" class="btn btn-confirm btn-run" id="run">Review</button>
+    </div>
+  </header>
+
+  <div class="row-top">
+    <section class="card card-map" aria-label="Who sends to this item">
+      <svg class="radial" id="map" viewBox="14 68 811 453" role="img" aria-label="Radial map of senders">
+        <g class="rings">
+          <ellipse class="ring" cx="424.5" cy="319.6" rx="212" ry="194"/>
+          <ellipse class="ring" cx="424.5" cy="319.6" rx="165.5" ry="151.6"/>
+          <ellipse class="ring" cx="424.5" cy="319.6" rx="121" ry="111"/>
+          <ellipse class="ring" cx="424.5" cy="319.6" rx="76.5" ry="70"/>
+        </g>
+        <g id="feeds"></g>
+        <g class="hub">
+          <ellipse class="hub-shape" cx="424.75" cy="312.75" rx="87" ry="60"/>
+          <text class="hub-label" id="hub" x="425" y="319"></text>
+        </g>
+        <g id="alerts"></g>
+      </svg>
+      <div class="pulse">
+        <span class="pulse-label" id="pulse-label"></span>
+        <svg class="pulse-track" id="pulse" viewBox="196 530 618 26" aria-label="Days the sender was active, oldest on the left"></svg>
+      </div>
+    </section>
+
+    <section class="card card-verdict" aria-label="Verdict">
+      <p class="verdict-word" id="verdict">&nbsp;</p>
+      <ol class="verdict-scale" aria-label="Verdict scale, mildest to strictest">
+        <li class="verdict-step" data-verdict="APPLY"><span class="verdict-dot"></span><span class="verdict-name">APPLY</span></li>
+        <li class="verdict-step" data-verdict="APPLY-AFTER-DRAIN"><span class="verdict-dot"></span><span class="verdict-name">AFTER-DRAIN</span></li>
+        <li class="verdict-step" data-verdict="CANARY-FIRST"><span class="verdict-dot"></span><span class="verdict-name">CANARY</span></li>
+        <li class="verdict-step" data-verdict="HOLD"><span class="verdict-dot"></span><span class="verdict-name">HOLD</span></li>
+      </ol>
+      <div class="divider" role="separator"></div>
+      <p class="queued" id="queued">&nbsp;</p>
+      <ul class="owners" id="owners" aria-label="Waiting for owners"></ul>
+      <p class="gate-line" id="gate-line"></p>
+    </section>
+  </div>
+
+  <div class="row-bottom">
+    <section class="card card-table" aria-label="Traffic evidence">
+      <h2 class="card-title" id="traffic-title">Who really talks to it</h2>
+      <table class="evidence traffic">
+        <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"></colgroup>
+        <thead><tr><th scope="col">Source</th><th scope="col">Count</th><th scope="col">Pattern</th><th scope="col">Status</th></tr></thead>
+        <tbody id="traffic"></tbody>
+      </table>
+    </section>
+    <section class="card card-table" aria-label="Shadow-run evidence">
+      <h2 class="card-title" id="shadow-title">Shadow-run</h2>
+      <table class="evidence shadow">
+        <colgroup><col class="c1"><col class="c2"><col class="c3"></colgroup>
+        <thead><tr><th scope="col">Field</th><th scope="col">Result</th><th scope="col">Notes</th></tr></thead>
+        <tbody id="shadow"></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+
+<section class="more" id="more" aria-label="The full record of this review">
+  <div class="more-col">
+    <h2>Why this verdict</h2>
+    <p id="summary"></p>
+    <ul id="reasons"></ul>
+    <p class="links" id="links"></p>
+    <h2>Every sender, settings against traffic</h2>
+    <table class="plain"><thead><tr><th>Sender</th><th>Target</th><th>Messages</th><th>Last seen</th><th>Pattern</th><th>In settings</th></tr></thead><tbody id="all-senders"></tbody></table>
+    <h2>Every shadow-run difference</h2>
+    <table class="plain"><thead><tr><th>Field</th><th>Kind</th><th>Messages</th><th>Senders</th><th>Example</th></tr></thead><tbody id="all-diffs"></tbody></table>
+  </div>
+  <div class="more-col">
+    <h2>What the agent did</h2>
+    <ol class="calls" id="calls"></ol>
+    <p class="usage" id="usage"></p>
+    <h2 id="answers-title" hidden>What the owners said</h2>
+    <ul id="answers"></ul>
+  </div>
+</section>
+
+<script>
+'use strict';
+const API = '/blastradius/api';
+const $ = id => document.getElementById(id);
+const SCALE = {'APPLY': 134, 'APPLY-AFTER-DRAIN': 66, 'CANARY-FIRST': 80, 'HOLD': 134};
+const LABEL = {'APPLY': 'APPLY', 'APPLY-AFTER-DRAIN': 'AFTER-DRAIN', 'CANARY-FIRST': 'CANARY', 'HOLD': 'HOLD'};
+// Positions from the approved picture, busiest sender first.
+const SLOTS = [
+  {x: 434, y: 137, lx: 437.5, ly: 94, cx: 435.5, cy: 116},
+  {x: 619.5, y: 222, lx: 694.5, ly: 202, cx: 695.5, cy: 226},
+  {x: 592, y: 444.5, lx: 712, ly: 443, cx: 712.5, cy: 466},
+  {x: 256.5, y: 431.5, lx: 155, ly: 433, cx: 154.5, cy: 456},
+  {x: 239.5, y: 221.5, lx: 144, ly: 203, cx: 143, cy: 226},
+];
+const ALERT_SLOTS = [
+  {x: 438, y: 421.5, ex: 431.8, ey: 372.8, ex2: 436.7, ey2: 411.1, lx: 437.5, ly: 457, cy: 480},
+  {x: 330, y: 400, ex: 372, ey: 360, ex2: 338, ey2: 392, lx: 300, ly: 436, cy: 459},
+  {x: 520, y: 400, ex: 477, ey: 360, ex2: 512, ey2: 392, lx: 550, ly: 436, cy: 459},
+];
+let current = null, timer = null, presets = [];
+
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const J = (url, body) => fetch(API + url, body ? {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)} : {})
+  .then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || d.summary || r.statusText); return d; }));
+
+/** The item the review is about: of everything checked, the one with the most senders. */
+function focus(card) {
+  const t = (card.evidence.traffic || []).filter(x => !x.error);
+  if (!t.length) return null;
+  return t.slice().sort((a, b) => (b.senders_seen || []).length - (a.senders_seen || []).length)[0];
+}
+
+function renderMap(t) {
+  const feeds = $('feeds'), alerts = $('alerts');
+  feeds.innerHTML = ''; alerts.innerHTML = '';
+  $('hub').textContent = t ? t.item : '';
+  if (!t) return;
+  const seen = t.senders_seen || [];
+  const undeclared = seen.filter(s => s.still_active && !s.configured);
+  const quiet = seen.filter(s => !undeclared.includes(s)).sort((a, b) => b.messages - a.messages);
+  quiet.forEach((s, i) => {
+    let slot = SLOTS[i];
+    if (!slot) {
+      const a = (i / quiet.length) * 2 * Math.PI - Math.PI / 2;
+      const x = 424.5 + 212 * Math.cos(a), y = 319.6 + 194 * Math.sin(a);
+      slot = {x, y, lx: x + (Math.cos(a) > 0 ? 80 : -80), ly: y - 4, cx: x + (Math.cos(a) > 0 ? 80 : -80), cy: y + 18};
+    }
+    const cls = s.still_active ? 'feed--live' : 'feed--gone';
+    feeds.insertAdjacentHTML('beforeend', `<g class="feed ${cls}"><title>${esc(s.sender)}: ${s.messages} messages, ${esc(s.pattern)}, last seen ${s.days_since_last} days ago</title>
+      <line class="edge" x1="${slot.x}" y1="${slot.y}" x2="424.5" y2="312.5"/>
+      <circle class="node" cx="${slot.x}" cy="${slot.y}" r="13"/>
+      <text x="${slot.lx}" y="${slot.ly}">${esc(s.sender)}</text>
+      <text class="node-count" x="${slot.cx}" y="${slot.cy}">${s.messages}</text></g>`);
+  });
+  undeclared.slice(0, ALERT_SLOTS.length).forEach((s, i) => {
+    const a = ALERT_SLOTS[i];
+    alerts.insertAdjacentHTML('beforeend', `<g class="feed feed--alert"><title>${esc(s.sender)}: ${s.messages} messages, ${esc(s.pattern)}. Nothing declares this link.</title>
+      <line class="edge" x1="${a.ex}" y1="${a.ey}" x2="${a.ex2}" y2="${a.ey2}"/>
+      <circle class="node" cx="${a.x}" cy="${a.y}" r="10.5"/>
+      <text x="${a.lx}" y="${a.ly}">${esc(s.sender)}</text>
+      <text class="node-count" x="${a.lx}" y="${a.cy}">${s.messages}</text></g>`);
+  });
+}
+
+function renderPulse(p) {
+  const svg = $('pulse');
+  svg.innerHTML = '<line class="pulse-base" x1="196" y1="553" x2="814" y2="553"/>';
+  $('pulse-label').textContent = p ? p.pattern : '';
+  $('pulse-label').title = p ? `${p.sender} to ${p.item}` : '';
+  svg.classList.toggle('is-quiet', !!p && !p.alert);
+  if (!p) return;
+  const w = p.window_days || 30;
+  for (const d of p.days || []) {
+    const x = 196 + 618 * (1 - d.days_ago / w);
+    for (let i = 0; i < 3; i++) {
+      const tx = (x + (i - 1) * 12).toFixed(1);
+      svg.insertAdjacentHTML('beforeend', `<line class="tick" x1="${tx}" y1="536" x2="${tx}" y2="553"><title>${d.days_ago} days ago: ${d.messages} messages</title></line>`);
+    }
+  }
+}
+
+function renderVerdict(card) {
+  const v = card.verdict || '', el = $('verdict');
+  const busy = card.status === 'IN-REVIEW';
+  el.textContent = busy ? 'Reviewing' : (LABEL[v] || ' ');
+  el.style.fontSize = busy ? '66px' : (SCALE[v] || 134) + 'px';
+  el.dataset.verdict = busy ? 'BUSY' : v;
+  document.querySelectorAll('.verdict-step').forEach(step => {
+    const on = !busy && step.dataset.verdict === v;
+    step.classList.toggle('is-active', on);
+    step.dataset.tone = on ? v : '';
+    if (on) step.setAttribute('aria-current', 'true'); else step.removeAttribute('aria-current');
+  });
+  const q = (card.evidence.queue || []).filter(x => +x.queued > 0);
+  const total = q.reduce((n, x) => n + +x.queued, 0);
+  $('queued').textContent = busy ? ' ' : (total ? `${total} queued` : 'Nothing queued');
+  $('queued').title = q.map(x => `${x.item}: ${x.queued}`).join(', ');
+  $('gate-line').textContent = busy ? '' : `Agent proposed ${card.agent_verdict || 'nothing'}. Code gate: ${v}.`;
+}
+
+function renderOwners(card) {
+  const ul = $('owners');
+  ul.innerHTML = '';
+  for (const t of card.tasks || []) {
+    const done = t.complete;
+    const icon = '<svg class="owner-icon" viewBox="0 0 28 30" aria-hidden="true"><circle cx="14" cy="9" r="6.7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M1.2 29 C1.2 21 6.5 16.6 14 16.6 C21.5 16.6 26.8 21 26.8 29 Z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>';
+    const right = done
+      ? `<span class="owner-done" data-action="${esc(t.action)}">${esc(t.action === 'Confirm' ? 'Confirmed' : t.action === 'Reject' ? 'Rejected' : t.action)}</span>`
+      : `<button type="button" class="btn btn-confirm" data-task="${t.id}" data-do="Confirm">Confirm</button><button type="button" class="btn btn-reject" data-task="${t.id}" data-do="Reject">Reject</button>`;
+    ul.insertAdjacentHTML('beforeend', `<li class="owner" title="${esc(t.message)}">${icon}<span class="owner-sep"></span><span class="owner-name">${esc(t.owner)}</span>${right}</li>`);
+  }
+}
+
+function statusOf(s) {
+  if (s.still_active && !s.configured) return 'not declared';
+  if (s.still_active) return 'active';
+  return s.configured ? 'quiet' : 'stopped';
+}
+
+function renderTables(card, t) {
+  $('traffic-title').textContent = t ? `Who really talks to ${t.item.replace(/\.Router$|\.Out$/, '')}` : 'Who really talks to it';
+  const seen = t ? (t.senders_seen || []).slice().sort((a, b) => (statusOf(b) === 'not declared') - (statusOf(a) === 'not declared') || b.messages - a.messages) : [];
+  $('traffic').innerHTML = seen.slice(0, 3).map(s => {
+    const alert = statusOf(s) === 'not declared';
+    const pattern = alert || s.still_active ? esc(s.pattern) : '–';
+    return `<tr class="${alert ? 'is-finding' : ''}"><td class="key">${esc(s.sender)}</td><td>${s.messages}</td><td class="${pattern === '–' ? 'empty' : ''}">${pattern}</td><td>${statusOf(s)}</td></tr>`;
+  }).join('') || `<tr><td class="key" colspan="4">${t ? 'No sender in 30 days' : ''}</td></tr>`;
+
+  const runs = card.evidence.shadow || [];
+  const run = runs.filter(r => !r.error).pop();
+  const decisions = card.evidence.decision || [];
+  const cls = (decisions[decisions.length - 1] || {}).diff_classification || {};
+  $('shadow-title').textContent = run ? `Shadow-run on ${run.messages_processed} stored messages` : 'Shadow-run';
+  const diffs = run ? (run.field_differences || []).slice().sort((a, b) => (cls[a.field] === 'intended') - (cls[b.field] === 'intended') || a.field.localeCompare(b.field)) : [];
+  const accepted = key => (card.tasks || []).some(x => x.complete && x.action === 'Confirm' && x.subject.endsWith('review ' + key));
+  $('shadow').innerHTML = diffs.slice(0, 3).map(d => {
+    const intended = cls[d.field] === 'intended' || accepted(d.field);
+    const of = `${d.messages} of ${run.messages_processed}`;
+    const senders = (d.senders || []);
+    const note = intended ? (accepted(d.field) ? 'accepted' : 'intended') : (senders.length === 1 ? 'all ' + esc(senders[0].sender) : '–');
+    return `<tr class="${intended ? '' : 'is-finding'}"><td class="key">${esc(d.field)}</td><td>${d.kind === 'lost' ? 'lost in ' + of : of}</td><td class="${note === '–' ? 'empty' : ''}">${note}</td></tr>`;
+  }).join('') || `<tr><td class="key" colspan="3">${run ? 'No field differs' : 'No shadow-run for this request'}</td></tr>`;
+}
+
+function renderMore(card) {
+  $('summary').textContent = card.summary || '';
+  $('reasons').innerHTML = (card.gate_reasons || []).map(r => `<li>${esc(r)}</li>`).join('');
+  const l = card.links || {};
+  $('links').innerHTML = [['Visual Trace', l.visual_trace], ['Message Viewer', l.message_viewer], ['Workflow inbox', l.workflow_inbox], ['Production', l.production]]
+    .filter(x => x[1]).map(x => `<a href="${esc(x[1])}" target="_blank" rel="noopener">${x[0]}</a>`).join('');
+  const rows = [];
+  for (const t of card.evidence.traffic || []) {
+    for (const s of t.senders_seen || []) rows.push(`<tr class="${s.still_active && !s.configured ? 'is-finding' : ''}"><td>${esc(s.sender)}</td><td>${esc(t.item)}</td><td>${s.messages}</td><td>${s.days_since_last === 1 ? '1 day ago' : s.days_since_last + ' days ago'}</td><td>${esc(s.pattern)}</td><td>${s.configured ? 'yes' : 'no'}</td></tr>`);
+  }
+  for (const c of card.evidence.configured || []) {
+    for (const s of c.configured_senders || []) {
+      const inTraffic = (card.evidence.traffic || []).some(t => t.item === c.item && (t.senders_seen || []).some(x => x.sender === s.sender));
+      if (!inTraffic) rows.push(`<tr><td>${esc(s.sender)}</td><td>${esc(c.item)}</td><td>0</td><td>not in 30 days</td><td>${s.enabled ? 'silent' : 'disabled'}</td><td>yes</td></tr>`);
+    }
+  }
+  $('all-senders').innerHTML = rows.join('') || '<tr><td colspan="6">None</td></tr>';
+  const run = (card.evidence.shadow || []).filter(r => !r.error).pop();
+  $('all-diffs').innerHTML = run ? ((run.field_differences || []).map(d => `<tr><td>${esc(d.field)}</td><td>${esc(d.kind)}</td><td>${d.messages} of ${run.messages_processed}</td><td>${(d.senders || []).map(s => esc(s.sender) + ' ' + s.messages).join(', ')}</td><td><code>${esc(d.example_before)}</code> to <code>${esc(d.example_after) || '(empty)'}</code></td></tr>`).join('') || '<tr><td colspan="5">No field differs</td></tr>') : '<tr><td colspan="5">No shadow-run</td></tr>';
+  $('calls').innerHTML = (card.audit || []).map(e => `<li class="${e.outcome === 'DENIED' ? 'is-denied' : ''}"><span>${e.outcome === 'DENIED' ? 'DENIED' : '✓'}</span> ${esc(e.tool)}${e.outcome === 'DENIED' ? ': ' + esc((e.detail || '').replace(/^.*?: */, '')) : ''}</li>`).join('');
+  const cost = card.cost_usd === '' || card.cost_usd === undefined ? 'cost unknown' : '$' + (+card.cost_usd).toFixed(2);
+  $('usage').textContent = `${card.mode === 'replay' ? 'Replay of ' : ''}${card.model || ''}, ${card.tool_calls} tool calls, ${((+card.prompt_tokens) + (+card.completion_tokens)).toLocaleString('en-US')} tokens, ${cost}`;
+  const answers = (card.rounds || []).flatMap(r => r.owner_answers || []);
+  $('answers-title').hidden = !answers.length;
+  $('answers').innerHTML = answers.map(a => `<li><b>${esc(a.key)}: ${esc(a.action)}.</b> ${esc(a.comment)}</li>`).join('');
+}
+
+function render(card) {
+  current = card;
+  $('request').innerHTML = card.id ? `<b>${esc(card.id)}</b> ${esc(card.text)}` : '';
+  const t = focus(card);
+  renderMap(t);
+  const p = card.pulse;
+  if (p) p.alert = !!(t && (t.active_senders_not_in_configuration || []).includes(p.sender));
+  renderPulse(p || null);
+  renderVerdict(card);
+  renderOwners(card);
+  renderTables(card, t);
+  renderMore(card);
+  fit();
+}
+
+async function load(id) {
+  clearTimeout(timer);
+  const card = await J('/change-requests/' + encodeURIComponent(id));
+  render(card);
+  const open = (card.tasks || []).some(x => !x.complete);
+  if (card.status === 'IN-REVIEW' || (card.status === 'WAITING-OWNERS' && !open)) timer = setTimeout(() => load(id), 1000);
+  else if (card.status === 'WAITING-OWNERS') timer = setTimeout(() => load(id), 3000);
+}
+
+async function submit(text) {
+  const r = await J('/change-requests', {text, requester: 'integration-lead'});
+  history.replaceState(null, '', '?cr=' + r.id);
+  await load(r.id);
+}
+
+async function start() {
+  presets = await J('/presets');
+  const sel = $('preset');
+  sel.innerHTML = presets.map(p => `<option value="${esc(p.id)}">${esc(p.title)}</option>`).join('') + '<option value="own">Your own text…</option>';
+  $('run').onclick = () => {
+    const chosen = presets.find(p => p.id === sel.value);
+    const text = chosen ? chosen.text : window.prompt('Describe the change in your own words. Replay mode only knows the presets; set BR_LLM_MODE=live for anything else.');
+    if (text) submit(text).catch(e => alert(e.message));
+  };
+  $('owners').addEventListener('click', e => {
+    const b = e.target.closest('button[data-task]');
+    if (!b || !current) return;
+    const comment = current.mode === 'live' ? (window.prompt(`${b.dataset.do}: anything the agent should know?`) || '') : '';
+    b.disabled = true;
+    J('/tasks/' + b.dataset.task, {action: b.dataset.do, comment}).then(() => load(current.id)).catch(err => alert(err.message));
+  });
+  const want = new URLSearchParams(location.search).get('cr');
+  if (want) return load(want);
+  const list = await J('/change-requests');
+  if (list.length) return load(list[0].id);
+}
+// The layout is 1440 wide, as approved. Smaller windows get it scaled down rather than rearranged.
+function fit() {
+  const z = Math.min(1, document.documentElement.clientWidth / 1440);
+  document.body.style.zoom = z;
+}
+addEventListener('resize', fit); fit();
+start().catch(e => { $('request').textContent = e.message; });
+</script>
+</body>
+</html>

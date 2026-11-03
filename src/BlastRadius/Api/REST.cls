@@ -98,6 +98,7 @@ ClassMethod Card(r As BlastRadius.Data.Review) As %DynamicObject
 	do res.%Set("rounds",$select(r.Rounds.Size>0:[].%FromJSON(r.Rounds.Read()),1:[]))
 	do res.%Set("evidence",$select(r.Evidence.Size>0:{}.%FromJSON(r.Evidence.Read(3000000)),1:{}))
 	do res.%Set("tasks",..Tasks(r.CRId))
+	do res.%Set("pulse",..PulseFor(res.evidence))
 	do res.%Set("audit",..Audit(r.CRId))
 	// On IRIS for Health the namespace's portal lives under /csp/healthshare, not /csp.
 	set csp="/csp/healthshare/"_ns_"/"
@@ -110,11 +111,44 @@ ClassMethod Tasks(pCRId As %String) As %DynamicArray
 	set out=[]
 	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT ID,%Subject s,%Message m,TaskStatus_RoleName r,TaskStatus_IsComplete c,%Action a,TaskStatus_AssignedTo u,TaskStatus_TimeCreated t FROM EnsLib_Workflow.TaskResponse WHERE %Subject %STARTSWITH ? ORDER BY ID",pCRId_":")
 	while rs.%Next() {
-		set row={"id":(rs.ID),"subject":(rs.s),"message":(rs.m),"role":(rs.r),"action":(rs.a),"assigned_to":(rs.u)}
+		set row={"id":(rs.ID),"subject":(rs.s),"message":(rs.m),"role":(rs.r),"action":(rs.a),"assigned_to":(rs.u),"owner":(..OwnerForRole(rs.r))}
+		try { do row.%Set("comment",##class(EnsLib.Workflow.TaskResponse).%OpenId(rs.ID).%FormValues.GetAt("Comment")) } catch {}
 		do row.%Set("complete",rs.c,"boolean")
 		do out.%Push(row)
 	}
 	quit out
+}
+
+/// Who a Workflow role reaches, from the lookup and the Business Partner record.
+ClassMethod OwnerForRole(pRole As %String) As %String
+{
+	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT KeyName FROM Ens_Util.LookupTable WHERE TableName='BlastRadiusOwners' AND DataValue=?",pRole)
+	quit:'rs.%Next() "Integration lead"
+	set partner=rs.KeyName
+	set bp=##class(Ens.Config.BusinessPartner).%OpenId(partner)
+	quit:'$isobject(bp) partner
+	quit $select(bp.PrimaryContact.Name'="":bp.PrimaryContact.Name_", ",1:"")_partner
+}
+
+/// The strip under the map: the undeclared sender if there is one, otherwise the busiest sender still active.
+ClassMethod PulseFor(pEvidence As %DynamicObject) As %DynamicObject
+{
+	quit:'$isobject(pEvidence.traffic) ""
+	set best="", bestItem="", bestPattern="", bestCount=-1, alert=0
+	set it=pEvidence.traffic.%GetIterator()
+	while it.%GetNext(.k,.t) {
+		continue:'$isobject(t."senders_seen")
+		set si=t."senders_seen".%GetIterator()
+		while si.%GetNext(.sk,.row) {
+			continue:'row."still_active"
+			set isAlert='row.configured
+			if (isAlert>alert)||((isAlert=alert)&&(row.messages>bestCount)) {
+				set best=row.sender, bestItem=t.item, bestPattern=row.pattern, bestCount=row.messages, alert=isAlert
+			}
+		}
+	}
+	quit:best="" ""
+	quit {"sender":(best),"item":(bestItem),"pattern":(bestPattern),"window_days":30,"days":(##class(BlastRadius.Evidence.Traffic).Pulse(best,bestItem))}
 }
 
 ClassMethod Audit(pCRId As %String) As %DynamicArray

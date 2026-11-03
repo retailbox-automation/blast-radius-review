@@ -134,15 +134,14 @@ ClassMethod Decide(pEvidence As %DynamicObject, pDecision, pRequestText As %Stri
 	}
 
 	// Rule 4: a router that transforms live traffic cannot be changed without testing that on stored messages.
-	if $isobject(items),$isobject(pEvidence.traffic) {
+	if $isobject(items),$isobject(pEvidence.traffic),'$data(lastRun) {
 		set it=pEvidence.traffic.%GetIterator()
 		while it.%GetNext(.k,.t) { if $isobject(t."senders_seen"),t."senders_seen".%Size()>0 { set busy(t.item)="" } }
 		set it=items.%GetIterator()
 		while it.%GetNext(.k,.name) {
 			continue:'$data(busy(name))
-			continue:$data(lastRun(name))
 			if ##class(BlastRadius.Evidence.Wiring).TransformsOf(name).transforms.%Size()>0 {
-				do reasons.%Push(name_" transforms live traffic, and no shadow-run was done on its stored messages.")
+				do reasons.%Push(name_" transforms live traffic, and no shadow-run was done on stored messages.")
 				set floor="HOLD"
 			}
 		}

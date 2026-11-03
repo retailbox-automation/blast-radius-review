@@ -55,6 +55,18 @@ ClassMethod Pattern(pSender As %String, pTarget As %String, pSince As %String) A
 	quit "about "_(total\dayCount)_" a day on "_dayCount_" days"
 }
 
+/// One entry per day a sender sent to a target: how many days ago, and how many messages. Draws the pulse on the decision screen.
+ClassMethod Pulse(pSender As %String, pTarget As %String, pDays As %Integer = 30) As %DynamicArray
+{
+	set today=+$ztimestamp
+	set since=$zdatetime(today-pDays_",0",3)
+	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT TimeCreated t FROM Ens.MessageHeader WHERE SourceConfigName=? AND TargetConfigName=? AND Type=1 AND TimeCreated>=?",pSender,pTarget,since)
+	while rs.%Next() { set d=+$zdatetimeh(rs.t,3), n(d)=$get(n(d))+1 }
+	set out=[], d=""
+	for { set d=$order(n(d),1,c) quit:d=""  do out.%Push({"days_ago":(today-d),"messages":(c)}) }
+	quit out
+}
+
 /// How many messages are waiting in an item's queue right now.
 ClassMethod QueueDepth(pName As %String) As %DynamicObject
 {

@@ -8,6 +8,11 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <context>
 <property name='First' type='BlastRadius.Msg.ReviewResult' instantiate='0' />
 <property name='OwnerKey' type='%Integer' initialexpression='0' instantiate='0' />
+<property name='CallNames' type='%String' initialexpression='""' instantiate='0' >
+<parameters>
+<parameter name='MAXLEN' value='' />
+</parameters>
+</property>
 <property name='Line' type='%String' instantiate='0' >
 <parameters>
 <parameter name='MAXLEN' value='' />
@@ -35,7 +40,8 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <true>
 <foreach name='Each owner' property='context.First.Owners' key='context.OwnerKey' xpos='335' ypos='500' xend='200' yend='450' >
 <assign name='Next task' property="context.Line" value="context.First.Owners.GetAt(context.OwnerKey)" action="set" xpos='200' ypos='250' />
-<call name='Ask owner' target='@$piece(context.Line,"|",1)' async='1' xpos='200' ypos='350' >
+<assign name='Remember the call' property="context.CallNames" value='context.CallNames_$select(context.CallNames="":"",1:",")_"Ask owner "_context.OwnerKey' action="set" xpos='200' ypos='300' />
+<call name='@"Ask owner "_context.OwnerKey' target='@$piece(context.Line,"|",1)' async='1' xpos='200' ypos='350' >
 <annotation>A task in the Workflow inbox of the item's Business Partner.</annotation>
 <request type='EnsLib.Workflow.TaskRequest' >
 <assign property="callrequest.%Subject" value='$piece(context.Line,"|",3)' action="set" />
@@ -44,11 +50,11 @@ XData BPL [ XMLNamespace = "http://www.intersystems.com/bpl" ]
 <assign property="callrequest.%FormFields" value='"Comment"' action="set" />
 </request>
 <response type='EnsLib.Workflow.TaskResponse' >
-<assign property="context.Answers" value='##class(BlastRadius.Process.Answers).Add(context.Answers,$piece(context.Line,"|",2),$piece(context.Line,"|",1),callresponse)' action="set" />
+<assign property="context.Answers" value='##class(BlastRadius.Process.Answers).Add(context.Answers,callresponse)' action="set" />
 </response>
 </call>
-<sync name='Wait for owner' calls='Ask owner' type='all' xpos='200' ypos='450' />
 </foreach>
+<sync name='Wait for owners' calls='@context.CallNames' type='all' xpos='335' ypos='550' />
 <call name='Review with answers' target='BlastRadius.Agent' async='0' xpos='335' ypos='600' >
 <annotation>Same agent, same evidence tools, now with what the owners said.</annotation>
 <request type='BlastRadius.Msg.ReviewRequest' >

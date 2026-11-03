@@ -78,6 +78,25 @@ Method TestShadowRunFindsTheLostField()
 }
 
 /// On a route with a thousand newer messages, a rare sender must still get into the sample.
+/// The pulse on the screen comes from the headers: annex-7 sent on four or five Tuesdays and on no other day.
+Method TestPulseIsTheRealTuesdays()
+{
+	set p=##class(BlastRadius.Evidence.Traffic).Pulse("annex-7","LAB-OLD.Router")
+	do $$$AssertTrue((p.%Size()=4)||(p.%Size()=5),"one entry per Tuesday in the window")
+	set total=0, it=p.%GetIterator()
+	while it.%GetNext(.k,.d) {
+		set total=total+d.messages
+		do $$$AssertEquals($zdate($ztimestamp-d."days_ago",10),2,"every entry is a Tuesday")
+	}
+	do $$$AssertEquals(total,41)
+}
+
+Method TestOwnerAnswerKeysComeFromTheSubject()
+{
+	do $$$AssertEquals(##class(BlastRadius.Process.Answers).KeyFromSubject("CR-0142: confirm annex-7"),"sender:annex-7")
+	do $$$AssertEquals(##class(BlastRadius.Process.Answers).KeyFromSubject("CR-0142: review ORC-12"),"diff:ORC-12")
+}
+
 Method TestRareSenderIsNotCrowdedOut()
 {
 	do ##class(BlastRadius.Evidence.Shadow).Sample("LAB-OLD.Router",30,.rows)
