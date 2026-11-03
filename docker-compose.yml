@@ -16,6 +16,7 @@ services:
       - BR_LLM_MODEL=${BR_LLM_MODEL:-}
       - BR_LLM_API_KEY=${BR_LLM_API_KEY:-}
       - BR_LLM_BASE_URL=${BR_LLM_BASE_URL:-}
+      - BR_LLM_TIMEOUT_S=${BR_LLM_TIMEOUT_S:-}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

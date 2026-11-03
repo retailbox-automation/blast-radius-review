@@ -45,9 +45,19 @@ ClassMethod RecordedModel(pText As %String, pRound As %Integer, pAnswers As %Str
 	quit $select($isobject(f):f.model,1:"no recording")
 }
 
+/// True when the current review ran to its end and the agent decided.
+ClassMethod Finished() As %Boolean
+{
+	quit ('$get(^||BR("failed")))&&($data(^||BR("ev","decision"))>0)
+}
+
 ClassMethod MaybeRecord(pRequest As BlastRadius.Msg.ReviewRequest, pSession As %AI.Agent.Session, pResponse As BlastRadius.Msg.ReviewResult)
 {
 	quit:$system.Util.GetEnviron("BR_RECORD")'="1"
+	if '..Finished() {
+		$$$LOGWARNING("Not recorded: the review failed or never decided, so any earlier recording stays.")
+		quit
+	}
 	try {
 		set ctx=pSession.GetContext()
 		set stats=pSession.GetStats()

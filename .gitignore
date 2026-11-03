@@ -8,5 +8,6 @@ service-account*.json
 *.tar
 *.tar.gz
 .DS_Store
+iris-main.log
 __pycache__/
 .claude/settings.local.json

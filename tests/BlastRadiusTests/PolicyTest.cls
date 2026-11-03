@@ -46,6 +46,24 @@ Method TestNoHelperIsOfferedAsATool()
 	do $$$AssertTrue(offered'["Keep")
 }
 
+/// A review that timed out or never decided must not replace a good recording.
+Method TestUnfinishedRunIsNotRecorded()
+{
+	kill ^||BR
+	do $$$AssertNotTrue(##class(BlastRadius.Replay.Recorder).Finished(),"no decision yet")
+	set ^||BR("ev","decision")=1
+	do $$$AssertTrue(##class(BlastRadius.Replay.Recorder).Finished(),"control: a decided run is kept")
+	set ^||BR("failed")=1
+	do $$$AssertNotTrue(##class(BlastRadius.Replay.Recorder).Finished(),"a failed run is not")
+	kill ^||BR
+}
+
+/// AI Hub stops a run after 300 seconds, which is too short for a local model on a busy machine.
+Method TestLiveTimeoutIsLongerThanTheDefault()
+{
+	do $$$AssertTrue(##class(BlastRadius.Agent.Adapter).TimeoutSeconds()>300)
+}
+
 Method TestDenialIsWrittenToTheAuditTable()
 {
 	set ^||BR("cr")="CR-TEST", ^||BR("round")=1

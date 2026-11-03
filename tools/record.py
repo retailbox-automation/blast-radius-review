@@ -2,6 +2,7 @@
 """Runs the demo requests against a live model and leaves recordings in replay/.
 Needs the container running with BR_LLM_MODE=live and BR_RECORD=1. Usage: record.py [preset ...]"""
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -42,7 +43,15 @@ def show(card):
     if denied:
         print("  denied:", denied)
     print("  tools:", " ".join(e["tool"] for e in card["audit"]))
+    for number in unsupported_numbers(card):
+        print(f"  WARNING: {number} in the summary is in no tool result, do not keep this recording")
     sys.stdout.flush()
+
+
+def unsupported_numbers(card):
+    """The summary is the model's own wording, so its numbers are compared with what the tools returned."""
+    tools = json.dumps({k: v for k, v in card.items() if k != "summary"})
+    return [n for n in re.findall(r"\b\d+\b", card["summary"] or "") if not re.search(rf"\b{n}\b", tools)]
 
 
 def run(text, combo=None):

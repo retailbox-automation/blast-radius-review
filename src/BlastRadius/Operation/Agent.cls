@@ -22,6 +22,7 @@ Method OnMessage(pRequest As BlastRadius.Msg.ReviewRequest, Output pResponse As 
 		if $$$ISOK(scChat),'$data(^||BR("ev","decision")) {
 			set scChat=..Adapter.SendChat("You have not called SubmitDecision yet. Call it now, as your last action.",.llm,session)
 		}
+		set ^||BR("failed")=$$$ISERR(scChat)
 		set elapsed=($zh-t0)*1000\1
 		set evidence=##class(BlastRadius.Agent.EvidenceLog).CollectEvidence()
 		set decision=""
