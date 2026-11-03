@@ -22,7 +22,7 @@ def call(path, body=None):
     return json.load(urllib.request.urlopen(req, timeout=30))
 
 
-def settle(cr, statuses, timeout=420):
+def settle(cr, statuses, timeout=2000):
     end = time.time() + timeout
     card = {"status": "not read yet"}
     while time.time() < end:

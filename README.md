@@ -169,7 +169,7 @@ BR_LLM_API_KEY=none
 BR_LLM_BASE_URL=http://host.docker.internal:11434/v1
 ```
 
-The recordings in `replay/` were made this way, with `gemma4:31b` running locally. Set `BR_PRICE_IN` and `BR_PRICE_OUT` (dollars per million tokens) and the card prices each decision.
+The recordings in `replay/` were made this way, with `gemma4:31b` running locally. Set `BR_PRICE_IN` and `BR_PRICE_OUT` (dollars per million tokens) and the card prices each decision. A live review may run for up to 15 minutes; `BR_LLM_TIMEOUT_S` changes that.
 
 How replay works: `BlastRadius.Replay.Provider` is a small REST class that speaks the OpenAI chat-completions protocol and answers from recordings. To AI Hub it is just another provider, so the agent loop, policies, audit, tool calls, SQL and DTL all run for real. A request with no recording gets an honest HOLD that says so. In replay mode only the presets have recordings.
 
@@ -187,6 +187,8 @@ The evidence tools read whichever production is running in the namespace, so not
 |---|---|---|---|---|
 | `gemma4:31b` | Local, through Ollama on a Mac Studio | 22,383 prompt + 4,043 completion tokens, 14 tool calls | about 1.5 minutes | $0 |
 
+The time is not a promise. On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit AI Hub's default limit of 300 seconds, which is why the limit is a setting here.
+
 The screen shows tokens and tool calls for each review, and the cost when it knows the price. It never guesses a price: set `BR_PRICE_IN` and `BR_PRICE_OUT` for a hosted model. Every tool call is one row in `BlastRadius_Data.AuditEvent` and one message in Visual Trace, so you can see what the agent did, in what order, and what it was refused.
 
 ## Platform findings
@@ -198,6 +200,8 @@ Things I ran into on build 109, in case they save you time:
 - **`EnsLib.AI.Agent.OutboundAdapter` works and has no documentation.** Its source in the image is the reference. `AgentClass`, `AuthPolicy` and `AuditPolicy` are production settings, and `OnBeforeAgentInit` is a good place to choose a provider from the environment.
 - **Every class method of a `%AI.Tool` class is offered to the model.** A helper of mine showed up as a tool and a model called it. Only the allow list stopped it. Helpers belong in another class, and `tests` checks that with `%Discover()`.
 - **`%SQL.Statement.%ExecDirect` does not throw on a bad statement.** `%Next()` returns 0, which an agent tool reads as "no rows", or here, "nobody uses this". All SQL here goes through `BlastRadius.Evidence.Sql`, which throws.
+- **A run stops after 300 seconds unless you say otherwise.** The error is `<%AICore>Timeout: Wall-clock timeout (300000 ms) exceeded before a final response`. `timeout_ms` in the session config changes it, and `request_timeout_secs` under `http_config` in the provider config limits one model request. `BlastRadius.Agent.Adapter` sets both from `BR_LLM_TIMEOUT_S`. A failed run still left a recording here until `Recorder.Finished()` stopped that.
+- **AI Hub stops a model that keeps getting the same tool result:** `<%AICore>LoopDetected: Agentic loop stalled: no new evidence from tool results after 4 assessment(s)`. I saw this with a fake provider that repeated one call. A real agent that polls a tool would hit it too.
 - **`call.arguments` is a JSON string in audit hooks and an object in authorization hooks** (known, bug report 14, still so on 109).
 
 ## Limitations
