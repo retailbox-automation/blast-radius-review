@@ -1,0 +1,63 @@
+14:33:07 2026-11-03 [INFO] Writing status to file: /home/irisowner/irissys/iscagent.status
+Reading configuration from file: /home/irisowner/irissys/iscagent.conf
+ISCAgent[19]: Starting
+ISCAgent[21]: Starting ApplicationServer on *:2188
+
+14:33:07 2026-11-03 [INFO] Starting InterSystems IRIS instance IRIS...
+14:33:10 2026-11-03 [INFO] Starting Control Process
+Global buffer setting requires attention.  Auto-selected 25% of total memory.
+Allocated 2705MB shared memory
+1982MB global buffers, 198MB routine buffers
+This copy of InterSystems IRIS has been licensed for use exclusively by:
+InterSystems IRIS Community
+Copyright (c) 1986-2026 by InterSystems Corporation
+Any other use is a violation of your license agreement
+
+2 alert(s) during startup. See messages.log for details.
+Starting IRIS
+
+
+14:33:10 2026-11-03 [INFO] ...started InterSystems IRIS instance IRIS
+14:33:10 2026-11-03 [INFO] Executing command /home/irisowner/dev/start.sh...
+14:33:10 2026-11-03 [INFO] 
+Node: d5ea31590038, Instance: IRIS
+
+BLASTRADIUS>
+Seeding 30 days of synthetic traffic, about a minute...
+
+<BREAK>OnProcessInput+1^EnsLib.HL7.Service.Standard.1
+BLASTRADIUS 9e1>
+
+14:33:10 2026-11-03 [INFO] ...executed command /home/irisowner/dev/start.sh
+14:43:02 2026-11-03 [INFO] Shutting down InterSystems IRIS instance IRIS...
+14:43:06 2026-11-03 [INFO] Writing status to file: /home/irisowner/irissys/iscagent.status
+Reading configuration from file: /home/irisowner/irissys/iscagent.conf
+ISCAgent[20]: Starting
+ISCAgent[21]: Starting ApplicationServer on *:2188
+
+14:43:06 2026-11-03 [INFO] Starting InterSystems IRIS instance IRIS...
+14:43:08 2026-11-03 [INFO] Starting Control Process
+Global buffer setting requires attention.  Auto-selected 25% of total memory.
+Allocated 2705MB shared memory
+1982MB global buffers, 198MB routine buffers
+This copy of InterSystems IRIS has been licensed for use exclusively by:
+InterSystems IRIS Community
+Copyright (c) 1986-2026 by InterSystems Corporation
+Any other use is a violation of your license agreement
+
+2 alert(s) during startup. See messages.log for details.
+Starting IRIS
+
+
+14:43:08 2026-11-03 [INFO] ...started InterSystems IRIS instance IRIS
+14:43:08 2026-11-03 [INFO] Executing command /home/irisowner/dev/start.sh...
+14:43:08 2026-11-03 [INFO] 
+Node: c636f19593a3, Instance: IRIS
+
+BLASTRADIUS>
+Seeding 30 days of synthetic traffic, about a minute...
+
+<BREAK>OnProcessInput+1^EnsLib.HL7.Service.Standard.1
+BLASTRADIUS 9e1>
+
+14:43:08 2026-11-03 [INFO] ...executed command /home/irisowner/dev/start.sh

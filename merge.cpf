@@ -1,0 +1,7 @@
+[Actions]
+ModifyService:Name=%Service_CallIn,Enabled=1,AutheEnabled=48
+CreateResource:Name=%DB_BLASTRADIUS,Description="Blast Radius Review database resource"
+CreateDatabase:Name=BLASTRADIUS,Directory=/usr/irissys/mgr/BLASTRADIUS,Resource=%DB_BLASTRADIUS
+CreateNamespace:Name=BLASTRADIUS,Globals=BLASTRADIUS,Routines=BLASTRADIUS,Interop=1
+[Startup]
+SystemMode=AI Hub EAP

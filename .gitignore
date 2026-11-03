@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+credentials*.json
+service-account*.json
+*.tar
+*.tar.gz
+.DS_Store
+__pycache__/
+.claude/settings.local.json

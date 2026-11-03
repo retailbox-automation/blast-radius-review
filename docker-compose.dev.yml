@@ -1,0 +1,11 @@
+# For working on the code: mounts this folder into the container, so a reload needs no image build.
+# docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# tools/reload.sh
+services:
+  iris:
+    volumes:
+      - ./:/home/irisowner/dev
+    environment:
+      - BR_RECORD=${BR_RECORD:-0}
+      - BR_PRICE_IN=${BR_PRICE_IN:-}
+      - BR_PRICE_OUT=${BR_PRICE_OUT:-}

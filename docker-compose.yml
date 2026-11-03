@@ -1,0 +1,25 @@
+services:
+  iris:
+    build:
+      context: .
+      args:
+        IMAGE: ${IRIS_IMAGE:-irishealth-community:2027.1.0AI.109.0}
+    image: blast-radius-review:local
+    container_name: blast-radius-review
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - BR_LLM_MODE=${BR_LLM_MODE:-replay}
+      - BR_LLM_PROVIDER=${BR_LLM_PROVIDER:-openai}
+      - BR_LLM_MODEL=${BR_LLM_MODEL:-}
+      - BR_LLM_API_KEY=${BR_LLM_API_KEY:-}
+      - BR_LLM_BASE_URL=${BR_LLM_BASE_URL:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      # The image ships with a well-known default password, so ports stay on this machine.
+      - "127.0.0.1:52773:52773"
+      - "127.0.0.1:1972:1972"
+    command: --after /home/irisowner/dev/start.sh

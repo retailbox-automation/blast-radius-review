@@ -1,0 +1,10 @@
+zn "%SYS"
+do ##class(Security.Users).UnExpireUserPasswords("*")
+zn "BLASTRADIUS"
+set sc=$system.OBJ.LoadDir("/home/irisowner/dev/src","ck",.errs,1)
+if 'sc { do $system.Status.DisplayError(sc) do $system.Process.Terminate($job,1) }
+set sc=$system.OBJ.LoadDir("/home/irisowner/dev/tests","ck",.errs,1)
+if 'sc { do $system.Status.DisplayError(sc) do $system.Process.Terminate($job,1) }
+set sc=##class(BlastRadius.Install).AtBuild()
+if 'sc { do $system.Status.DisplayError(sc) do $system.Process.Terminate($job,1) }
+halt
