@@ -20,6 +20,7 @@ Method OnMessage(pRequest As BlastRadius.Msg.ReviewRequest, Output pResponse As 
 		set scChat=..Adapter.SendChat(..Prompt(pRequest),.llm,session)
 		// A model that stopped without deciding gets one nudge. The gate holds if it still does not decide.
 		if $$$ISOK(scChat),'$data(^||BR("ev","decision")) {
+			do ..DropEmptyLastTurn(session)
 			set scChat=..Adapter.SendChat("You have not called SubmitDecision yet. Call it now, as your last action.",.llm,session)
 		}
 		set ^||BR("failed")=$$$ISERR(scChat)
@@ -43,6 +44,7 @@ Method OnMessage(pRequest As BlastRadius.Msg.ReviewRequest, Output pResponse As 
 		set pResponse.Model=$select(pResponse.Mode="replay":##class(BlastRadius.Replay.Recorder).RecordedModel(pRequest.Text,pRequest.Round,pRequest.OwnerAnswers),1:..Adapter.Model)
 		set pResponse.PromptTokens=stats."total_prompt_tokens", pResponse.CompletionTokens=stats."total_completion_tokens"
 		set pResponse.ToolCalls=stats."total_tool_calls", pResponse.DurationMs=elapsed
+		set pResponse.PromptVersion=..PromptVersion()
 		// Owner tasks only exist on a hold, and only in the first round.
 		if (gate.verdict="HOLD"),(pRequest.Round=1) { do ..BuildTasks(gate,pResponse) }
 
@@ -83,6 +85,47 @@ Method MarkInReview(pCRId As %String)
 	quit:'$isobject(r)
 	set r.Status="IN-REVIEW"
 	do r.%Save()
+}
+
+/// A model turn with no text and no tool calls says nothing, and AI Hub sends it back without its content field,
+/// which an OpenAI-compatible server such as Ollama rejects, failing the whole request. So it goes before the reminder.
+Method DropEmptyLastTurn(pSession As %AI.Agent.Session)
+{
+	set n=pSession.MessageCount()
+	quit:n<1
+	quit:'..IsEmptyTurn(pSession.GetMessage(n-1))
+	do pSession.RemoveMessage(n-1)
+	$$$LOGINFO("Removed the model's empty turn before the reminder: "_n_" messages before, "_pSession.MessageCount()_" after")
+}
+
+/// True for an assistant message with no text and no tool calls: content missing, null or empty.
+ClassMethod IsEmptyTurn(pMessage As %DynamicObject) As %Boolean
+{
+	quit:'$isobject(pMessage) 0
+	quit:pMessage.role'="assistant" 0
+	if $isobject(pMessage."tool_calls"),pMessage."tool_calls".%Size()>0 quit 0
+	set type=pMessage.%GetTypeOf("content")
+	quit (type="null")||(type="unassigned")||((type="string")&&(pMessage.content=""))
+}
+
+/// The agent's instructions as compiled, the text the model gets as its system prompt.
+ClassMethod Instructions() As %String
+{
+	set x=##class(%Dictionary.CompiledXData).%OpenId("BlastRadius.Agent.Reviewer||INSTRUCTIONS")
+	quit:'$isobject(x) ""
+	set t=""
+	do x.Data.Rewind()
+	while 'x.Data.AtEnd { set t=t_x.Data.Read(32000) }
+	quit t
+}
+
+/// First 12 hex digits of SHA-256 over the instructions, so Visual Trace shows which wording a decision came from.
+ClassMethod PromptVersion(pText As %String = {..Instructions()}) As %String
+{
+	quit:pText="" ""
+	set h=$system.Encryption.SHAHash(256,$zconvert(pText,"O","UTF8")), v=""
+	for i=1:1:6 set v=v_$translate($justify($zhex($ascii(h,i)),2)," ","0")
+	quit $zconvert(v,"L")
 }
 
 /// The user message. The markers let the replay provider recognise a recorded request.

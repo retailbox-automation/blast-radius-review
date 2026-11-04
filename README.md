@@ -58,6 +58,7 @@ The decision has four outcomes: **APPLY**, **APPLY-AFTER-DRAIN**, **CANARY-FIRST
 | Code outranks the model | `tests/run.sh GateTest` | `TestUnnamedSenderOverridesAgentApply`: the model says APPLY, the gate says HOLD |
 | Owners really change the outcome | `tests/run.sh EndToEndTest` | Two owners confirm: APPLY-AFTER-DRAIN. One rejects: HOLD |
 | No key is needed to try all of this | Follow the quick start | Every tool, policy and gate runs for real. Only the model's words are recorded |
+| Each model call is traced like any message | Open Visual Trace from the card, click the `ReviewResult` message | Model, prompt and completion tokens, tool calls, time and the prompt version; `TestTraceShowsTheModelCallAndItsPromptVersion` checks the version against what the model received |
 
 ## Quick start
 
@@ -215,6 +216,22 @@ Use a test instance. This is a demo, so its web applications ask for no password
 On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit the 300-second limit I had set, which is why the limit is now a setting.
 
 The screen shows tokens and tool calls for each review, and the cost when it knows the price. It never guesses a price: set `BR_PRICE_IN` and `BR_PRICE_OUT` for a hosted model. Every tool call is one row in `BlastRadius_Data.AuditEvent` and one message in Visual Trace, so you can see what the agent did, in what order, and what it was refused.
+
+## Tracing the agent like any other message flow
+
+This implements the Community idea [DPI-I-689, "Use InterSystems Interoperability as a Traceability tool for GenAI LLM pipelines"](https://ideas.intersystems.com/ideas/DPI-I-689). The production itself is the trace store, so no separate tracing service is needed.
+
+Open any review in Visual Trace (the card links to its session) and you will find:
+
+| Message | Where it goes | What it carries |
+|---|---|---|
+| `BlastRadius.Msg.ReviewRequest` | `BlastRadius.Agent` | The change request, the round, and the owners' answers in round two |
+| `BlastRadius.Msg.ToolCallRecord`, one per tool call | `BlastRadius.ToolLedger` | Tool name, arguments, outcome (`ALLOWED`, `FAILED` or `DENIED`), result and time |
+| `BlastRadius.Msg.ReviewResult` | back to the process | Model, mode (live or replay), prompt tokens, completion tokens, number of tool calls, time, and `PromptVersion` |
+
+`PromptVersion` is the first 12 hex digits of SHA-256 over the agent's instructions (`XData INSTRUCTIONS` in `BlastRadius.Agent.Reviewer`). If you change one word of the instructions, the next review shows a new version, so you can tell which wording produced a decision. In replay mode it names the instructions sent on this run, and the recorded answers may come from an earlier wording. New recordings store the version they were made with as `prompt_version`.
+
+Because these are ordinary messages, the usual tools apply: Message Viewer search, purge settings, and SQL on `Ens.MessageHeader` and the message tables. They also sit in the same session as the HL7 traffic the review is about. A dedicated LLM tracing service such as Langfuse records each model call separately. Here tokens and time are totals for each round, and the tool calls are the steps.
 
 ## Platform findings
 

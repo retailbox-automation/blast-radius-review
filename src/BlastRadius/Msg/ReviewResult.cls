@@ -32,6 +32,9 @@ Property ToolCalls As %Integer;
 
 Property DurationMs As %Integer;
 
+/// First 12 hex digits of SHA-256 over the instructions this run sent to the model. A different wording gives a different value.
+Property PromptVersion As %String;
+
 Storage Default
 {
 <Data name="Owners">
@@ -76,6 +79,9 @@ Storage Default
 </Value>
 <Value name="12">
 <Value>DurationMs</Value>
+</Value>
+<Value name="13">
+<Value>PromptVersion</Value>
 </Value>
 </Data>
 <DefaultData>ReviewResultDefaultData</DefaultData>

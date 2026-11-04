@@ -151,6 +151,48 @@ Method TestUnknownTextIsAnHonestHold()
 	do $$$AssertTrue(r.Summary["only knows the recorded requests")
 }
 
+/// Needs no model. Only an assistant turn with nothing in it counts as empty: a turn with text or a tool call stays.
+Method TestOnlyAnEmptyAssistantTurnIsDropped()
+{
+	do $$$AssertTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn({"role":"assistant","content":""}),"empty text")
+	do $$$AssertTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn({"role":"assistant","content":null}),"null text")
+	do $$$AssertTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn({"role":"assistant"}),"no content at all")
+	do $$$AssertNotTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn({"role":"assistant","content":"I looked at it."}),"text stays")
+	do $$$AssertNotTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn({"role":"assistant","content":"","tool_calls":[{"id":"c1","type":"function","function":{"name":"FindItems","arguments":"{}"}}]}),"a tool call stays")
+	do $$$AssertNotTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn({"role":"user","content":""}),"only assistant turns")
+	do $$$AssertNotTrue(##class(BlastRadius.Operation.Agent).IsEmptyTurn(""),"not a message")
+}
+
+/// Needs no model: the version is a hash of the compiled instructions, and one more character changes it.
+Method TestPromptVersionFollowsTheInstructions()
+{
+	set text=##class(BlastRadius.Operation.Agent).Instructions()
+	do $$$AssertTrue($length(text)>1000,"the instructions were read")
+	set v=##class(BlastRadius.Operation.Agent).PromptVersion()
+	do $$$AssertTrue(v?12(1N,1"a",1"b",1"c",1"d",1"e",1"f"),"twelve hex digits: "_v)
+	do $$$AssertEquals(##class(BlastRadius.Operation.Agent).PromptVersion(text),v)
+	do $$$AssertNotEquals(##class(BlastRadius.Operation.Agent).PromptVersion(text_" "),v,"another wording, another version")
+}
+
+/// The model call is a message in the session, and it carries the model, tokens, tool calls, time and the version of the instructions the model really got.
+Method TestTraceShowsTheModelCallAndItsPromptVersion()
+{
+	quit:..Skip()
+	kill ^BlastRadius.ReplaySeen
+	set r=..Submit(..Preset("unused"))
+	set rs=##class(BlastRadius.Evidence.Sql).Run("SELECT MessageBodyId FROM Ens.MessageHeader WHERE SessionId=? AND MessageBodyClassName='BlastRadius.Msg.ReviewResult'",r.SessionId)
+	do $$$AssertTrue(rs.%Next(),"the review result is a message in the session")
+	set m=##class(BlastRadius.Msg.ReviewResult).%OpenId(rs.MessageBodyId)
+	do $$$AssertTrue($isobject(m),"and it opens")
+	quit:'$isobject(m)
+	do $$$AssertEquals(m.Model,r.Model)
+	do $$$AssertTrue(m.PromptTokens>0,"prompt tokens")
+	do $$$AssertTrue(m.ToolCalls>0,"tool calls")
+	do $$$AssertTrue(m.DurationMs>0,"time")
+	do $$$AssertEquals(m.PromptVersion,##class(BlastRadius.Operation.Agent).PromptVersion())
+	do $$$AssertEquals(m.PromptVersion,$get(^BlastRadius.ReplaySeen("prompt_version")),"the model got exactly these instructions")
+}
+
 /// Every message of a review belongs to one session, so Visual Trace shows the whole thing.
 Method TestReviewIsOneSessionInTheProduction()
 {

@@ -81,7 +81,7 @@ ClassMethod MaybeRecord(pRequest As BlastRadius.Msg.ReviewRequest, pSession As %
 			do steps.%Push({"message":(out),"usage":{"prompt_tokens":(up),"completion_tokens":(down)}})
 		}
 		set key=..Key(pRequest.Text,pRequest.Round,pRequest.OwnerAnswers)
-		set rec={"request":(pRequest.Text),"round":(pRequest.Round),"owner_answers":(pRequest.OwnerAnswers),"model":(pResponse.Model),"recorded_at":($zdatetime($ztimestamp,3)),"total_prompt_tokens":(stats."total_prompt_tokens"),"total_completion_tokens":(stats."total_completion_tokens"),"verdict":(pResponse.AgentVerdict),"steps":(steps)}
+		set rec={"request":(pRequest.Text),"round":(pRequest.Round),"owner_answers":(pRequest.OwnerAnswers),"model":(pResponse.Model),"prompt_version":(pResponse.PromptVersion),"recorded_at":($zdatetime($ztimestamp,3)),"total_prompt_tokens":(stats."total_prompt_tokens"),"total_completion_tokens":(stats."total_completion_tokens"),"verdict":(pResponse.AgentVerdict),"steps":(steps)}
 		set s=##class(%Stream.FileCharacter).%New()
 		set s.TranslateTable="UTF8"
 		$$$ThrowOnError(s.LinkToFile(..Dir()_key_".json"))

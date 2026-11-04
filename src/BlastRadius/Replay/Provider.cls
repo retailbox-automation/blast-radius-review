@@ -28,12 +28,15 @@ ClassMethod Complete() As %Status
 	try {
 		set body={}.%FromJSON(%request.Content)
 		set messages=body.messages
-		set first="", step=0
+		set first="", step=0, system=""
 		set it=messages.%GetIterator()
 		while it.%GetNext(.k,.m) {
 			if (m.role="user"),(first="") set first=..ContentText(m.content)
 			if m.role="assistant" set step=step+1
+			if (m.role="system"),(system="") set system=..ContentText(m.content)
 		}
+		// Which instructions actually reached the model, so a test can compare them with the trace.
+		set ^BlastRadius.ReplaySeen("prompt_version")=##class(BlastRadius.Operation.Agent).PromptVersion(system)
 		set key=##class(BlastRadius.Replay.Recorder).KeyFromPrompt(first)
 		set fixture=##class(BlastRadius.Replay.Recorder).Load(key)
 		if '$isobject(fixture) set fixture=..NoRecording()
