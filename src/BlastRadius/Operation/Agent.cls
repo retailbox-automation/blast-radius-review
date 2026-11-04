@@ -108,7 +108,8 @@ ClassMethod IsEmptyTurn(pMessage As %DynamicObject) As %Boolean
 	quit (type="null")||(type="unassigned")||((type="string")&&(pMessage.content=""))
 }
 
-/// The agent's instructions as compiled, the text the model gets as its system prompt.
+/// The agent's instructions as AI Hub sends them as the system prompt: the compiled XData with LF line ends and no newline at the end.
+/// TestTraceShowsTheModelCallAndItsPromptVersion compares this with what the replay provider receives.
 ClassMethod Instructions() As %String
 {
 	set x=##class(%Dictionary.CompiledXData).%OpenId("BlastRadius.Agent.Reviewer||INSTRUCTIONS")
@@ -116,7 +117,7 @@ ClassMethod Instructions() As %String
 	set t=""
 	do x.Data.Rewind()
 	while 'x.Data.AtEnd { set t=t_x.Data.Read(32000) }
-	quit t
+	quit $zstrip($replace(t,$char(13,10),$char(10)),">",$char(13,10))
 }
 
 /// First 12 hex digits of SHA-256 over the instructions, so Visual Trace shows which wording a decision came from.

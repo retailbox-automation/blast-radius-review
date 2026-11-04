@@ -16,6 +16,7 @@ Method TestTrafficFindsTheUndeclaredSender()
 	do $$$AssertTrue($isobject(a),"annex-7 appears in traffic")
 	do $$$AssertEquals(a.messages,41)
 	do $$$AssertEquals(a.pattern,"Tuesdays 06:00 UTC")
+	do $$$AssertEquals(a."last_seen_weekday","Tuesday")
 	do $$$AssertEquals(a.configured,0)
 	do $$$AssertEquals(t."active_senders_not_in_configuration".%ToJSON(),"[""annex-7""]")
 }
@@ -247,6 +248,23 @@ Method TestSeedAge()
 	do $$$AssertEquals(##class(DemoHospital.Seed).NeedsReset(today),0,"never began")
 	set ^BlastRadius.Seed("done")=kept
 	set:began'="" ^BlastRadius.Seed("started")=began
+}
+
+/// The messages with two orders are always inside annex-7's own share of a 120-message shadow-run sample,
+/// whichever day the demo is seeded, so the shadow-run finds all of them on any day.
+Method TestTwoOrderMessagesAreAlwaysSampled()
+{
+	set share=(120\($length(##class(DemoHospital.Seed).#FEEDS,",")+1))-##class(DemoHospital.Seed).#QUEUED
+	for offset=0:1:6 {
+		kill ^||plan
+		set n=0, today=+$ztimestamp+offset
+		do ##class(DemoHospital.Seed).PlanAnnex(today,.n)
+		set rank=0, multi=0, worst=0, day=""
+		for { set day=$order(^||plan(day),-1) quit:day=""  set secs="" for { set secs=$order(^||plan(day,secs),-1) quit:secs=""  set k="" for { set k=$order(^||plan(day,secs,k),-1,row) quit:k=""  continue:$list(row,1)'="annex-7"  set rank=rank+1 if ($length($list(row,3),"ORC|")-1)>1 { set multi=multi+1, worst=rank } } } }
+		do $$$AssertEquals(multi,##class(DemoHospital.Seed).#ANNEXMULTI,"all messages with two orders are planned, offset "_offset)
+		do $$$AssertTrue(worst<=share,"the oldest of them is number "_worst_" from the newest, inside the share of "_share_", offset "_offset)
+	}
+	kill ^||plan
 }
 
 /// Exactly four batches whichever day it is seeded, all still inside the window two days later.

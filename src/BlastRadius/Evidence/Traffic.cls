@@ -24,6 +24,8 @@ ClassMethod Links(pName As %String, pDays As %Integer = 30) As %DynamicObject
 		do row.%Set("still_active",active,"boolean")
 		do row.%Set("silent_since_last",silent,"boolean")
 		do row.%Set("days_since_last",$system.SQL.Functions.DATEDIFF("day",rs.l,$zdatetime($ztimestamp,3)),"number")
+		// Given, so a model never works out the weekday from a date itself.
+		do row.%Set("last_seen_weekday",$zdate($zdateh($piece(rs.l," ",1),3),12))
 		do senders.%Push(row)
 		if (active||silent),'configured do unknown.%Push(sender)
 	}

@@ -11,6 +11,7 @@ Parameter FEEDS = "orders-ed:10,orders-inpatient:14,orders-surgery:4,orders-onco
 Parameter MOVEDAYSAGO = 27;
 
 /// Messages annex-7 sends in the 30-day window, and how many of them carry two orders.
+/// The ones with two orders are the newest of the last batch, so every shadow-run sample takes all of them, whichever day the demo is seeded.
 Parameter ANNEXTOTAL = 41;
 
 Parameter ANNEXMULTI = 3;
@@ -119,12 +120,10 @@ ClassMethod PlanAnnex(pToday As %Integer, ByRef pN As %Integer) As %Integer
 	do ..LastTuesdays(pToday,.tuesdays)
 	set total=..#ANNEXTOTAL-..#QUEUED
 	set perWeek=total\tuesdays, extra=total#tuesdays
-	set multiLeft=..#ANNEXMULTI
 	for w=1:1:tuesdays {
 		set day=tuesdays(w), count=perWeek+$select(w>(tuesdays-extra):1,1:0)
 		for k=1:1:count {
-			set orders=1
-			if (multiLeft>0),(k=3) { set orders=2, multiLeft=multiLeft-1 }
+			set orders=$select((w=tuesdays)&&(k>(count-..#ANNEXMULTI)):2,1:1)
 			set secs=(6*3600)+(k*20)
 			do ..AddPlan(.pN,"annex-7","LAB-OLD.Router",day,secs,..OrderMessage(pN,"annex-7",day,secs,orders,.state))
 		}
