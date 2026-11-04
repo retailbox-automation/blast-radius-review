@@ -1,6 +1,6 @@
 # Blast Radius Review
 
-Before anyone changes a live IRIS integration, an AI Hub agent finds everything that depends on it, tests the change on stored messages, and says whether to go ahead. It never applies anything itself.
+Before anyone changes a live IRIS integration, an AI Hub agent checks who still sends to what the change touches, tests the change on stored messages, and says whether to go ahead. It never applies anything itself.
 
 Built for the InterSystems programming contest *AI Agents in Interoperability Workflows*. Runs on **AI Hub Community build 2027.1.0AI.109.0, IRIS for Health**.
 
@@ -137,16 +137,20 @@ This adds what they cannot know:
 
 The model is good at two things here: mapping words to production items, and judging whether a difference in a field was intended given what the request says. It is not trusted with the rest.
 
-`BlastRadius.Gate.Floor` reads what the tools returned, not the agent's account of them, and works out the softest verdict the evidence allows. The agent can be stricter than that floor. It can never be softer.
+`BlastRadius.Gate.Floor` reads what the tools returned, not the agent's account of them, and works out the softest verdict the evidence allows. The agent can be stricter than that floor, never softer, within what the gate looks at:
+
+- traffic: the items the decision names, the items the request names (the whole name, or the part before the dot, so "LAB-OLD" covers `LAB-OLD.Router` and `LAB-OLD.Out`), and the routers configured in front of all of them. If the agent named only `LAB-OLD.Out`, the gate still reads the traffic of `LAB-OLD.Router` and finds `annex-7`;
+- queues: the items the decision or the request names;
+- shadow-runs: every router the decision names, each one separately.
 
 | Rule | Floor |
 |---|---|
 | No decision, an unknown verdict, or no item the production has | HOLD |
+| An owner answered anything but Confirm, in either round, whether or not this round's evidence still shows their point | HOLD |
 | A traffic check that failed. If the agent skipped a check or looked at fewer than 30 days, the gate runs it itself and judges the result | HOLD |
-| An active sender nothing declares, unless the request names it or its owner confirmed | HOLD |
-| A shadow-run difference not marked intended, and not accepted by an owner. Every run counts, not only the last | HOLD |
-| A router that transforms live traffic, changed without a shadow-run on an item the decision names | HOLD |
-| An owner rejected | HOLD |
+| An active sender nothing declares, unless its owner confirmed or a sentence of the request commits to something for it ("the owner of annex-7 will re-point it", "retire annex-7 too"). A mention such as "I have no idea who annex-7 is" does not count | HOLD |
+| A shadow-run difference not marked intended, and not accepted by an owner. Every run in both rounds counts, not only the last | HOLD |
+| A named router that transforms live traffic, without a shadow-run of its own: one that processed messages, starts from the transform the router uses now, and tries a transform another router uses or the request names. A run that tried a router's own transform on the traffic moving to it covers that router too | HOLD |
 | Messages still queued on what is changing | APPLY-AFTER-DRAIN |
 
 Active means the sender sent in the last 14 days, or sent earlier in the window and has sent nowhere else since, which is how a monthly batch looks. The feeds that moved have sent elsewhere, so they do not count. Whether a difference is intended stays the agent's judgement, which is the one thing here it is trusted with.
@@ -258,6 +262,9 @@ This is a prototype, built in a contest window.
 - Traffic can only show what was sent inside the window. A sender that runs once a quarter stays invisible unless the window covers it.
 - A shadow-run executes your transforms on stored messages. Custom code in a transform that has side effects will still have them.
 - Demo web applications have no authentication, and ports bind to `127.0.0.1`. Do not expose them.
+- The gate only asks for a shadow-run on routers the decision names. A router that neither the decision nor the request names, and that is not configured in front of something they name, is outside what the gate checks.
+- A sender that is declared in the configuration and still active does not raise the floor on its own: the gate flags undeclared senders. Retiring an item that a declared feed still uses relies on the agent's review.
+- A quiet sender that also sends somewhere else in the same batch counts as moved. The demo has no such sender.
 
 ## Troubleshooting
 

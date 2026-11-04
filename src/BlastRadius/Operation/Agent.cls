@@ -67,16 +67,24 @@ ClassMethod MarkFailed(pCRId As %String, pError As %String)
 	do r.%Save()
 }
 
-/// Owners answer about what round one's shadow-run found. If the agent does not run it again, their answers still apply to that run.
+/// Owners answer about what round one's shadow-runs found, so round two keeps those runs next to any new ones.
+/// A new run must not replace them: what they found would drop out of the gate.
 ClassMethod CarryShadowRuns(pCRId As %String, pEvidence As %DynamicObject)
 {
-	quit:$isobject(pEvidence.shadow)
 	set r=##class(BlastRadius.Data.Review).Find(pCRId)
 	quit:'$isobject(r)
 	quit:r.Evidence.Size=0
 	do r.Evidence.Rewind()
 	set before={}.%FromJSON(r.Evidence)
-	if $isobject(before.shadow) do pEvidence.%Set("shadow",before.shadow)
+	quit:'$isobject(before.shadow)
+	set runs=[]
+	set it=before.shadow.%GetIterator()
+	while it.%GetNext(.k,.run) { do runs.%Push(run) }
+	if $isobject(pEvidence.shadow) {
+		set it=pEvidence.shadow.%GetIterator()
+		while it.%GetNext(.k,.run) { do runs.%Push(run) }
+	}
+	do pEvidence.%Set("shadow",runs)
 }
 
 Method MarkInReview(pCRId As %String)
