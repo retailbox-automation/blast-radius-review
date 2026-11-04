@@ -9,3 +9,11 @@ services:
       - BR_RECORD=${BR_RECORD:-0}
       - BR_PRICE_IN=${BR_PRICE_IN:-}
       - BR_PRICE_OUT=${BR_PRICE_OUT:-}
+# A narrow fixed network for development, so Docker does not take a whole /16 that other stacks on the same
+# machine may need. The main docker-compose.yml keeps Docker's default for anyone else.
+networks:
+  default:
+    name: blast-radius-review-dev
+    ipam:
+      config:
+        - subnet: 10.250.73.0/24
