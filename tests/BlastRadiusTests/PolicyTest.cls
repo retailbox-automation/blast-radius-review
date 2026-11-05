@@ -111,7 +111,10 @@ Method TestSecondRoundKeepsTheFirstRoundsShadowRun()
 	do $$$AssertEquals(none.shadow.%Size(),1,"carried over")
 	set own={"shadow":[{"item":"LAB-NEW.Router"},{"item":"X"}]}
 	do ##class(BlastRadius.Operation.Agent).CarryShadowRuns(r.CRId,own)
-	do $$$AssertEquals(own.shadow.%Size(),2,"control: a new run stands")
+	do $$$AssertEquals(own.shadow.%Size(),3,"round one and every new run are preserved (package A contract, 2026-11-04)")
+	do $$$AssertEquals(own.shadow.%Get(0).item,"LAB-OLD.Router","round one's run stays first")
+	do $$$AssertEquals(own.shadow.%Get(1).item,"LAB-NEW.Router","the first new run is preserved")
+	do $$$AssertEquals(own.shadow.%Get(2).item,"X","the second new run is preserved")
 	do r.%DeleteId(r.%Id())
 }
 
