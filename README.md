@@ -16,6 +16,25 @@ Shadow-run: 3 of 120 stored messages lose field ORC-12, and nothing says that is
 
 Its target is read from a Lookup Table at run time, so neither the production diagram nor Interface Maps can show it. The message headers can.
 
+Most AI work on productions looks at messages after something has gone wrong. This looks at a change to the production before anyone makes it.
+
+## Judge it in two minutes
+
+You need the AI Hub image loaded and retagged first ([Quick start](#quick-start), steps 1 and 2). Then:
+
+```bash
+git clone https://github.com/retailbox-automation/blast-radius-review.git && cd blast-radius-review
+docker compose up -d                                   # builds and starts, about a minute the first time
+curl -s http://localhost:52773/blastradius/api/health  # repeat until it says "ready":true
+```
+
+Open http://localhost:52773/blastradius/ui/index.html. No key and no model are needed.
+
+1. **Retire the old lab** gives HOLD and names `annex-7`, a sender no configuration declares.
+2. Press **Confirm** on both owner tasks. The agent reviews again and says APPLY-AFTER-DRAIN, because 4 messages are still queued.
+3. **Just apply it** shows `DENIED ApplyChange` in the audit list: the agent cannot apply anything.
+4. `tests/run.sh` runs every test class inside the container.
+
 ## Why this exists
 
 Every integration team asks the same question before retiring or changing an interface: who still uses this? The honest answer is usually in somebody's head. A real hospital group described in the literature runs [534 interfaces on seven production servers, 86 of them legacy](https://www.scitepress.org/Papers/2021/102420/102420.pdf) (Linecker and Wöß, HEALTHINF 2021). Nobody holds that list in their head.
@@ -59,6 +78,30 @@ The decision has four outcomes: **APPLY**, **APPLY-AFTER-DRAIN**, **CANARY-FIRST
 | Owners really change the outcome | `tests/run.sh EndToEndTest` | Two owners confirm: APPLY-AFTER-DRAIN. One rejects: HOLD |
 | No key is needed to try all of this | Follow the quick start | Every tool, policy and gate runs for real. Only the model's words are recorded |
 | Each model call is traced like any message | Open Visual Trace from the card, click the `ReviewResult` message | Model, prompt and completion tokens, tool calls, time and the prompt version; `TestTraceShowsTheModelCallAndItsPromptVersion` checks the version against what the model received |
+
+### Where to look, by judging criterion
+
+| Criterion | Where to look |
+|---|---|
+| Complexity | [Agent proposes, code decides](#agent-proposes-code-decides): traffic, shadow-run of real DTL classes on stored HL7, a code floor under the verdict, a second round with the owners' answers |
+| Clarity of Instructions | [Judge it in two minutes](#judge-it-in-two-minutes), [Quick start](#quick-start), [Troubleshooting](#troubleshooting) |
+| Developer Experience | Replay needs no key, `tests/run.sh` runs the suite, [IPM](#install-with-ipm), [a real model](#run-it-with-a-real-model) is a few lines of `.env` |
+| Applicability | [Point it at your own production](#point-it-at-your-own-production): the tools read whatever production runs in the namespace |
+| Usability | The decision screen, the Workflow inbox and Visual Trace, all from the card |
+
+### Contest bonuses
+
+Points are the organizers' list; they decide what counts.
+
+| Bonus | Points | Here |
+|---|---|---|
+| Workflow Engine | 2 | Owner tasks are `EnsLib.Workflow` tasks, and their answers go back into the BPL ([step 5](#quick-start)) |
+| Docker | 2 | `docker compose up -d` |
+| Embedded Python | 3 | `BlastRadius.Evidence.Rhythm` predicts a sender's next run, called from the REST API ([why not from a tool](#platform-findings)) |
+| ZPM package | 2 | `module.xml`, [Install with IPM](#install-with-ipm) |
+| Community idea | 4 | [DPI-I-689](#tracing-the-agent-like-any-other-message-flow) |
+| Bugs in AI Hub | 2 + 1 | [#15](https://github.com/intersystems-community/ai-hub-eap-bugreports/issues/15) and [#16](https://github.com/intersystems-community/ai-hub-eap-bugreports/issues/16) |
+| Questionnaire | 1 | Filled in |
 
 ## Quick start
 
@@ -169,16 +212,21 @@ BR_LLM_API_KEY=your-key-here
 BR_LLM_BASE_URL=              # any OpenAI-compatible endpoint, or empty
 ```
 
-A free local model works too, through Ollama on the host:
+A free local model works too, through Ollama on the host. One review sends about 20,000 tokens of context, and Ollama may give a model a smaller window by default, so make a variant with a 32K window first:
+
+```bash
+printf 'FROM gemma4:31b\nPARAMETER num_ctx 32768\n' > Modelfile.32k
+ollama create gemma4:31b-32k -f Modelfile.32k
+```
 
 ```bash
 BR_LLM_MODE=live
-BR_LLM_MODEL=gemma4:31b
+BR_LLM_MODEL=gemma4:31b-32k
 BR_LLM_API_KEY=none
 BR_LLM_BASE_URL=http://host.docker.internal:11434/v1
 ```
 
-The recordings in `replay/` were made this way, with `gemma4:31b` running locally. Set `BR_PRICE_IN` and `BR_PRICE_OUT` (dollars per million tokens) and the card prices each decision. A live review may run for up to 15 minutes; `BR_LLM_TIMEOUT_S` changes that.
+The recordings in `replay/` were made this way, with `gemma4:31b` running locally (the earliest ones before the 32K variant). Set `BR_PRICE_IN` and `BR_PRICE_OUT` (dollars per million tokens) and the card prices each decision. A live review may run for up to 15 minutes; `BR_LLM_TIMEOUT_S` changes that.
 
 How replay works: `BlastRadius.Replay.Provider` is a small REST class that speaks the OpenAI chat-completions protocol and answers from recordings. To AI Hub it is just another provider, so the agent loop, policies, audit, tool calls, SQL and DTL all run for real. A request with no recording gets an honest HOLD that says so. In replay mode only the presets have recordings.
 
@@ -213,11 +261,21 @@ Use a test instance. This is a demo, so its web applications ask for no password
 
 ## Models and cost
 
-| Model | Where | One review, first round | Time | Cost |
-|---|---|---|---|---|
-| `gemma4:31b` | Local, through Ollama on a Mac Studio | 22,383 prompt + 4,043 completion tokens, 14 tool calls | about 1.5 minutes | $0 |
+These are the recordings in `replay/` made on 7 November 2026, with `gemma4:31b-32k` running locally through Ollama on a Mac Studio. Cost was $0.
 
-On another run, a review with 13 tool calls took 5.6 minutes on the same machine and hit the 300-second limit I had set, which is why the limit is now a setting.
+| Request | Round | Prompt + completion tokens | Tool calls | Verdict |
+|---|---|---|---|---|
+| Retire the old lab | 1 | 17,218 + 3,065 | 12 | HOLD |
+| same, both owners confirm | 2 | 17,688 + 2,222 | 11 | APPLY-AFTER-DRAIN |
+| same, annex-7's owner rejects | 2 | 17,665 + 2,263 | 11 | HOLD |
+| same, the lab's owner rejects | 2 | 17,654 + 2,095 | 11 | HOLD |
+| same, both reject | 2 | 19,848 + 2,812 | 11 | HOLD |
+| "Just apply it" | 1 | 21,218 + 7,371 | 11 | HOLD, `ApplyChange` denied |
+| same, annex-7's owner confirms | 2 | 22,255 + 5,916 | 14 | HOLD, `ApplyChange` denied again |
+
+Both rounds of one review took 2.3 to 2.8 minutes for the retire request and 6.5 minutes for "Just apply it". In all five reviews the final verdict after round two was the agent's own, so the gate did not have to raise it. In "Just apply it" the agent was stricter than the floor: the floor was APPLY-AFTER-DRAIN, the agent kept HOLD.
+
+On an earlier run, a review with 13 tool calls took 5.6 minutes on the same machine and hit the 300-second limit I had set, which is why the limit is now a setting.
 
 The screen shows tokens and tool calls for each review, and the cost when it knows the price. It never guesses a price: set `BR_PRICE_IN` and `BR_PRICE_OUT` for a hosted model. Every tool call is one row in `BlastRadius_Data.AuditEvent` and one message in Visual Trace, so you can see what the agent did, in what order, and what it was refused.
 
@@ -234,6 +292,20 @@ Open any review in Visual Trace (the card links to its session) and you will fin
 | `BlastRadius.Msg.ReviewResult` | back to the process | Model, mode (live or replay), prompt tokens, completion tokens, number of tool calls, time, and `PromptVersion` |
 
 `PromptVersion` is the first 12 hex digits of SHA-256 over the agent's instructions (`XData INSTRUCTIONS` in `BlastRadius.Agent.Reviewer`). If you change one word of the instructions, the next review shows a new version, so you can tell which wording produced a decision. In replay mode it names the instructions sent on this run, and the recorded answers may come from an earlier wording. New recordings store the version they were made with as `prompt_version`.
+
+The same records answer the questions a tracing service would, in SQL (*System Explorer > SQL*, namespace `BLASTRADIUS`):
+
+```sql
+-- tokens, tool calls, time and prompt version of each review round
+SELECT CRId, Round, Model, Mode, PromptTokens, CompletionTokens, ToolCalls, DurationMs, PromptVersion
+FROM BlastRadius_Msg.ReviewResult ORDER BY ID DESC
+
+-- every tool call of one review, in order
+SELECT Round, Tool, Outcome, DurationMs FROM BlastRadius_Msg.ToolCallRecord WHERE CRId = ? ORDER BY ID
+
+-- everything the agent was refused
+SELECT CRId, Tool, Outcome FROM BlastRadius_Data.AuditEvent WHERE Outcome = 'DENIED'
+```
 
 Because these are ordinary messages, the usual tools apply: Message Viewer search, purge settings, and SQL on `Ens.MessageHeader` and the message tables. They also sit in the same session as the HL7 traffic the review is about. A dedicated LLM tracing service such as Langfuse records each model call separately. Here tokens and time are totals for each round, and the tool calls are the steps.
 
@@ -275,6 +347,7 @@ This is a prototype, built in a contest window.
 | HOLD saying replay only knows the recorded requests | That text has no recording. Pick a preset, or switch to live mode |
 | Port 52773 or 1972 already in use | Stop the other IRIS container |
 | Counts differ from this README some days after the first start | `docker compose restart`. A seed older than a day is replaced on start, and the earlier reviews go with it |
+| You pulled new commits into an existing clone and the screen behaves as before | `docker compose up -d --build`. The code is compiled into the image and the demo is seeded from it, so a plain restart keeps the old build |
 
 ## Build history and AI assistance
 

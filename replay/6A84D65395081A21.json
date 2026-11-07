@@ -2,10 +2,11 @@
   "request":"Retire LAB-OLD; everything moved to LAB-NEW last month.",
   "round":2,
   "owner_answers":"[{\"key\":\"sender:annex-7\",\"role\":\"Owner-Annex7\",\"action\":\"Confirm\",\"comment\":\"We will move the Tuesday batch to LAB-NEW.Router before its next run.\",\"user\":\"\"},{\"key\":\"diff:ORC-12\",\"role\":\"Owner-Lab\",\"action\":\"Confirm\",\"comment\":\"Accepted for now. The lab reads the ordering provider from the first order in the message.\",\"user\":\"\"}]",
-  "model":"gemma4:31b",
-  "recorded_at":"2026-11-03 15:19:20",
-  "total_prompt_tokens":17513,
-  "total_completion_tokens":2787,
+  "model":"gemma4:31b-32k",
+  "prompt_version":"a862711c18c4",
+  "recorded_at":"2026-11-07 12:18:35",
+  "total_prompt_tokens":17688,
+  "total_completion_tokens":2222,
   "verdict":"APPLY-AFTER-DRAIN",
   "steps":[
     {
@@ -14,7 +15,7 @@
         "content":"",
         "tool_calls":[
           {
-            "id":"call_6hrx1qzh",
+            "id":"call_519kig8w",
             "type":"function",
             "function":{
               "name":"FindItems",
@@ -24,8 +25,8 @@
         ]
       },
       "usage":{
-        "prompt_tokens":2918,
-        "completion_tokens":464
+        "prompt_tokens":2948,
+        "completion_tokens":370
       }
     },
     {
@@ -34,31 +35,7 @@
         "content":"",
         "tool_calls":[
           {
-            "id":"call_fuy04gvr",
-            "type":"function",
-            "function":{
-              "name":"ConfiguredLinks",
-              "arguments":"{\"item\":\"LAB-OLD.Router\"}"
-            }
-          },
-          {
-            "id":"call_swt2fy7q",
-            "type":"function",
-            "function":{
-              "name":"TrafficLinks",
-              "arguments":"{\"item\":\"LAB-OLD.Router\"}"
-            }
-          },
-          {
-            "id":"call_w16ln87q",
-            "type":"function",
-            "function":{
-              "name":"QueueDepth",
-              "arguments":"{\"item\":\"LAB-OLD.Router\"}"
-            }
-          },
-          {
-            "id":"call_kka8lu91",
+            "id":"call_843fsq5f",
             "type":"function",
             "function":{
               "name":"ConfiguredLinks",
@@ -66,7 +43,7 @@
             }
           },
           {
-            "id":"call_t8imulrs",
+            "id":"call_uunffz4q",
             "type":"function",
             "function":{
               "name":"TrafficLinks",
@@ -74,18 +51,42 @@
             }
           },
           {
-            "id":"call_h5zpwp1y",
+            "id":"call_c9lt4dc6",
             "type":"function",
             "function":{
               "name":"QueueDepth",
               "arguments":"{\"item\":\"LAB-OLD.Out\"}"
+            }
+          },
+          {
+            "id":"call_nuebys1l",
+            "type":"function",
+            "function":{
+              "name":"ConfiguredLinks",
+              "arguments":"{\"item\":\"LAB-OLD.Router\"}"
+            }
+          },
+          {
+            "id":"call_q6xp1c3r",
+            "type":"function",
+            "function":{
+              "name":"TrafficLinks",
+              "arguments":"{\"item\":\"LAB-OLD.Router\"}"
+            }
+          },
+          {
+            "id":"call_zbe4w8f3",
+            "type":"function",
+            "function":{
+              "name":"QueueDepth",
+              "arguments":"{\"item\":\"LAB-OLD.Router\"}"
             }
           }
         ]
       },
       "usage":{
-        "prompt_tokens":2918,
-        "completion_tokens":464
+        "prompt_tokens":2948,
+        "completion_tokens":370
       }
     },
     {
@@ -94,7 +95,7 @@
         "content":"",
         "tool_calls":[
           {
-            "id":"call_w4q6cj9v",
+            "id":"call_9e68qio2",
             "type":"function",
             "function":{
               "name":"TransformsOf",
@@ -102,7 +103,7 @@
             }
           },
           {
-            "id":"call_y9a0cn18",
+            "id":"call_e5l04gh4",
             "type":"function",
             "function":{
               "name":"TransformsOf",
@@ -112,8 +113,8 @@
         ]
       },
       "usage":{
-        "prompt_tokens":2918,
-        "completion_tokens":464
+        "prompt_tokens":2948,
+        "completion_tokens":370
       }
     },
     {
@@ -122,7 +123,7 @@
         "content":"",
         "tool_calls":[
           {
-            "id":"call_tagmxc26",
+            "id":"call_6iq7syg7",
             "type":"function",
             "function":{
               "name":"ShadowRun",
@@ -132,8 +133,8 @@
         ]
       },
       "usage":{
-        "prompt_tokens":2918,
-        "completion_tokens":464
+        "prompt_tokens":2948,
+        "completion_tokens":370
       }
     },
     {
@@ -142,28 +143,28 @@
         "content":"",
         "tool_calls":[
           {
-            "id":"call_mp5gcuei",
+            "id":"call_qaqrdfjm",
             "type":"function",
             "function":{
               "name":"SubmitDecision",
-              "arguments":"{\"diffClassification\":\"{\\\"MSH-5\\\":\\\"intended\\\",\\\"OBR-4\\\":\\\"intended\\\",\\\"ORC-12\\\":\\\"intended\\\"}\",\"items\":\"LAB-OLD.Router,LAB-OLD.Out\",\"summary\":\"Owner-Annex7 confirmed they will move the traffic from annex-7 (41 messages recently). Owner-Lab accepted the loss of ORC-12. LAB-OLD.Out has 4 messages queued.\",\"verdict\":\"APPLY-AFTER-DRAIN\"}"
+              "arguments":"{\"diffClassification\":\"{\\\"MSH-5\\\":\\\"intended\\\",\\\"OBR-4\\\":\\\"intended\\\",\\\"ORC-12\\\":\\\"intended\\\"}\",\"items\":\"LAB-OLD.Router,LAB-OLD.Out\",\"summary\":\"Owner-Annex7 confirmed they will move the tuesday batch for sender annex-7 (41 messages). Owner-Lab confirmed the ORC-12 difference. Other traffic stopped last month.\",\"verdict\":\"APPLY-AFTER-DRAIN\"}"
             }
           }
         ]
       },
       "usage":{
-        "prompt_tokens":2918,
-        "completion_tokens":464
+        "prompt_tokens":2948,
+        "completion_tokens":370
       }
     },
     {
       "message":{
         "role":"assistant",
-        "content":"The request to retire LAB-OLD was reviewed. Traffic from annex-7 (41 messages recently) is still hitting LAB-OLD.Router, but Owner-Annex7 confirmed they will move this traffic to LAB-NEW.Router. Shadow-run differences in MSH-5, OBR-4, and ORC-12 were accepted by Owner-Lab. As LAB-OLD.Out still has 4 messages queued, the change should be applied after they drain."
+        "content":"The change to retire LAB-OLD is safe once current queues drain. Owner-Annex7 confirmed they will move the Tuesday batch for sender annex-7 (41 messages), and Owner-Lab accepted the ORC-12 difference. Other sender traffic stopped last month."
       },
       "usage":{
-        "prompt_tokens":2918,
-        "completion_tokens":464
+        "prompt_tokens":2948,
+        "completion_tokens":370
       }
     }
   ]
