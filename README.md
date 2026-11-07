@@ -117,7 +117,7 @@ docker tag docker.iscinternal.com/docker-intersystems/intersystems/irishealth-co
            irishealth-community:2027.1.0AI.109.0
 ```
 
-`docker image load` prints the name it loaded. If yours differs, use that name in the tag command. I tested on ARM only; the x64 file name above comes from the portal.
+`docker image load` prints the name it loaded. If yours differs, use that name in the tag command. Both files loaded under the name above. I ran the whole quick start with the arm64 image natively and with the x64 image under amd64 emulation (Docker on Apple Silicon), not on a native x64 machine.
 
 **3. Start it.**
 
