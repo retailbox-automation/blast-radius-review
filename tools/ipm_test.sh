@@ -14,7 +14,8 @@ for i in $(seq 1 60); do
   sleep 2
 done
 docker exec "$C" mkdir -p /home/irisowner/pkg
-tar -C "$ROOT" -cf - module.xml src ui replay | docker exec -i "$C" tar -C /home/irisowner/pkg -xf -
+# No macOS metadata: on a Mac, tar otherwise adds a ._ file for every file, and the package loader tries to import them.
+COPYFILE_DISABLE=1 tar --no-xattrs -C "$ROOT" -cf - module.xml src ui replay | docker exec -i "$C" tar -C /home/irisowner/pkg -xf -
 OUT=$(docker exec -i "$C" iris session IRIS <<'EOS'
 zn "%SYS"
 set r=##class(%Net.HttpRequest).%New(),r.Server="pm.community.intersystems.com",r.Https=1,r.SSLConfiguration="ISC.FeatureTracker.SSL.Config"
