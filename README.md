@@ -16,7 +16,7 @@ Shadow-run: 3 of 120 stored messages lose field ORC-12, and nothing says that is
 
 Its target is read from a Lookup Table at run time, so neither the production diagram nor Interface Maps can show it. The message headers can.
 
-Most AI work on productions looks at messages after something has gone wrong. This looks at a change to the production before anyone makes it.
+Most AI agents for productions look at messages after something has failed; this one looks at a change to the production before anyone makes it.
 
 ## Judge it in two minutes
 
@@ -33,7 +33,7 @@ Open http://localhost:52773/blastradius/ui/index.html. No key and no model are n
 1. **Retire the old lab** gives HOLD and names `annex-7`, a sender no configuration declares.
 2. Press **Confirm** on both owner tasks. The agent reviews again and says APPLY-AFTER-DRAIN, because 4 messages are still queued.
 3. **Just apply it** shows `DENIED ApplyChange` in the audit list: the agent cannot apply anything.
-4. `tests/run.sh` runs every test class inside the container.
+4. `tests/run.sh` runs every test class inside the container and ends with `RESULT passed=397 failed=0`.
 
 ## Why this exists
 
@@ -143,7 +143,7 @@ Pick **Retire the old lab**. You should see HOLD within a second or two. Portal 
 
 **6. Look at it from the IRIS side.** Scroll down the decision screen: the gate's reasons, every sender, every field difference, each tool call, and links to Visual Trace for the session, Message Viewer and the production. The tasks are ordinary Workflow tasks, and the review items sit in the production next to the hospital's, under the `BlastRadius` category.
 
-![Workflow inbox with the two owner tasks](docs/images/workflow-inbox.png)
+![Workflow inbox with the owner tasks of two reviews](docs/images/workflow-inbox.png)
 
 **7. Run the tests.**
 
