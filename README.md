@@ -104,6 +104,7 @@ Points are the organizers' list; they decide what counts.
 | Community idea | 4 | [DPI-I-689](#tracing-the-agent-like-any-other-message-flow) |
 | Bugs in AI Hub | 2 + 1 | [#15](https://github.com/intersystems-community/ai-hub-eap-bugreports/issues/15) and [#16](https://github.com/intersystems-community/ai-hub-eap-bugreports/issues/16) |
 | Video | 3 | [YouTube](https://youtu.be/bEO0FlvvwAM), [MP4 download](https://github.com/retailbox-automation/blast-radius-review/releases/download/media-v1/blast-radius-review-demo.mp4) |
+| Article on Developer Community | 2 | [Your production already knows who depends on it](https://community.intersystems.com/post/your-production-already-knows-who-depends-it) |
 | Questionnaire | 1 | Filled in |
 
 ## Quick start
