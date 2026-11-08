@@ -20,6 +20,8 @@ Most AI agents for productions look at messages after something has failed; this
 
 ## Judge it in two minutes
 
+Prefer to watch first: [the demo video](https://youtu.be/bEO0FlvvwAM) is 1:41 ([MP4](https://github.com/retailbox-automation/blast-radius-review/releases/download/media-v1/blast-radius-review-demo.mp4)).
+
 You need the AI Hub image loaded and retagged first ([Quick start](#quick-start), steps 1 and 2). Then:
 
 ```bash
@@ -101,6 +103,7 @@ Points are the organizers' list; they decide what counts.
 | ZPM package | 2 | `module.xml`, [Install with IPM](#install-with-ipm) |
 | Community idea | 4 | [DPI-I-689](#tracing-the-agent-like-any-other-message-flow) |
 | Bugs in AI Hub | 2 + 1 | [#15](https://github.com/intersystems-community/ai-hub-eap-bugreports/issues/15) and [#16](https://github.com/intersystems-community/ai-hub-eap-bugreports/issues/16) |
+| Video | 3 | [YouTube](https://youtu.be/bEO0FlvvwAM), [MP4 download](https://github.com/retailbox-automation/blast-radius-review/releases/download/media-v1/blast-radius-review-demo.mp4) |
 | Questionnaire | 1 | Filled in |
 
 ## Quick start
